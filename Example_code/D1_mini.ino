@@ -1,11 +1,11 @@
-/*  Sample code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
+/*  Sample sketch to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
     Developed and tested with a Lolin D1 mini WiFi module as master, but should adapt to 
     other devices using the Arduino IDE and equivalent libraries. The D1 mini WiFi capability 
     is not implemented here.
     
     The D1 mini module provides a UART to USB interface to allow communication with a PC. 
     Any serial terminal program (eg. putty) should work; be sure to set equivalent baud rates. 
-    The master can monitor the alarm state of slave with a separate INTERRUPT_PIN (lowest latency) 
+    The master can monitor the alarm state of the slave with a separate INTERRUPT_PIN (lowest latency) 
     as well as the first byte of the status_array. The D1 mini can supply 3V3 external power to the sensor.
     Make sure a large electrolytic filter capacitor is on this line.
 
