@@ -1,6 +1,6 @@
-# Sample master firmware
+# Sample master firmware for ESP8266
 
-Sample code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
+Example code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
 Developed and tested with a Lolin D1 mini WiFi module as master, but should adapt to 
     other devices using the Arduino IDE and equivalent libraries. The D1 mini uses the Espressif ESP8266
     for WiFi capability, but wireless
