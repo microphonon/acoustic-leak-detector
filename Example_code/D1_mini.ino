@@ -1,4 +1,4 @@
-/*  Sample sketch to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
+/*  Sample code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
     Developed and tested with a Lolin D1 mini WiFi module as master, but should adapt to 
     other devices using the Arduino IDE and equivalent libraries. The D1 mini WiFi capability 
     is not implemented here.
@@ -6,18 +6,19 @@
     The D1 mini module provides a UART to USB interface to allow communication with a PC. 
     Any serial terminal program (eg. putty) should work; be sure to set equivalent baud rates. 
     The master can monitor the alarm state of the slave with a separate INTERRUPT_PIN (lowest latency) 
-    as well as the first byte of the status_array. The D1 mini can supply 3V3 external power to the sensor.
-    Make sure a large electrolytic filter capacitor is on this line.
-
+    as well as reading the first byte of the status_array. 
+    
     Command characters are read from the serial terminal as user input. Characters are echoed to 
     the terminal then formatted into command strings as a sequence of hex bytes that are sent to slave. 
     Syntax is in separate documentation.
 
     The sensor status is polled at a period set by polling_interval in milliseconds. The retrieved 
-    status bytes are then sent to the terminal. Each I2C read is signaled by the LED blinking. 
+    status bytes are then sent to the terminal. Each I2C read is signaled by the D1 mini LED blinking. 
     To allow the user to send sensor configuration commands with reasonably low latency, the terminal 
     is checked for input with a period set by sleep_delay.
 
+    The D1 mini can supply 3V3 external power to the sensor.
+    Make sure a large electrolytic filter capacitor is on this line.
     Don't forget the pullup resistors on SDA and SCL; tested with 4.7k.
   
     MPH MicroPhonon April 2022 */
@@ -43,9 +44,10 @@
   const uint16_t I2C_SLAVE = 0x77; //AquaPing slave address
   const uint16_t baud_rate = 9600; //UART baud rate
   
-  int i, j, k, bsize;
+  int i, j, k=0, bsize=0;
   volatile uint8_t flag_high = 0; 
   volatile uint8_t flag_low = 0; 
+  volatile uint8_t first_pass = 1; 
   char Status_array[SBYTES];
   char input_string[ISTRING],carray[CSTRING];
   unsigned long currentMillis, trigger; 
@@ -56,28 +58,51 @@
     Serial.begin(baud_rate);  //Start serial UART for terminal output via USB
     Wire.begin(SDA_PIN, SCL_PIN); //I2C bus
     attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), alarm_handler, CHANGE);
-    for(i=0;i<SBYTES;i++)Status_array[i]=0; //Clear status array  
+    for(i=0;i<SBYTES;i++)Status_array[i]=0; //Clear status array
   }
 
   unsigned long previousMillis = millis();
  
   void loop() 
   {
-       //First check for user input from the terminal
+        //Flush the serial port on first pass
+        if(first_pass == 1)
+        {
+          while (Serial.available() > 0) Serial.read(); 
+          first_pass = 0;
+        }
+       //Check for user input from the terminal
+        k=0;
         while (Serial.available() > 0) 
         {
             char s = Serial.read(); // Receive a byte as character
             if (s != 0x0D) //Check for the return character
             {                     
               input_string[k]=s;
-              k++;    
+              k++;
+              if (k == ISTRING) 
+              {
+                // Big string encountered, likely caused by terminal program startup
+                while (Serial.available() > 0) Serial.read(); //Finish reading garbage input
+                Serial.println();
+                Serial.println("Terminal input ignored."); 
+                for(i=0; i < ISTRING; i++) input_string[i]=0x00; 
+                break;
+              }
             }      
             else //Return byte entered, command entry complete, message length k
-            {
+            { 
+              Serial.print("Input hex bytes read ");
+              for(i=0; i < k; i++)
+                  {  
+                    Serial.print(input_string[i], HEX);  
+                    Serial.print(" "); 
+                  }
+                 Serial.println();
               //Check to see if commands entered correctly
               if(create_command(k, input_string)==1)
               {
-                  if(carray[0] == 0x72) i=2; //Reset is in command string
+                  if(carray[0] == 0x72) i=2; //Reset found in command string
                   else
                   {
                       i=0;
