@@ -44,7 +44,7 @@
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 36
+# define FIRMWARE 37
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -693,7 +693,7 @@ void SetParam(uint8_t p1, uint8_t p2)
 {
     uint8_t ii;
     //Default status array used only for system reset
-    uint8_t Default[] = {0,0,0,0,0,BACKGROUND_SAMPLES,DATASET,TRIGGER,1,1,1,FIRMWARE};
+    uint8_t Default[] = {0,0,0,0,0,BACKGROUND_SAMPLES,DATASET,TRIGGER,2,1,1,FIRMWARE};
     switch(p1){
     case 0x72:  //Sensor reset
         if(p2 != 0x72) ; //Bad argument, ignore
@@ -733,7 +733,7 @@ void SetParam(uint8_t p1, uint8_t p2)
            else Status_array[8] = p2;
            break;
        case 0x6C:    //LED state
-           if(p2 == 0x30) Status_array[10] = 0x00; //LEDs off
+           if(p2 == 0x30) Status_array[9] = 0x00; //LEDs off
            else if (p2 == 0x31) Status_array[9] = 0x01; //LEDs on
            else break; //Bad argument, ignore
            break;
