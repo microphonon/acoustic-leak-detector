@@ -1,4 +1,4 @@
-# Firmware example for ESP8266
+# ESP8266 firmware example
 
 Sample code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
     Developed and tested with a Lolin D1 mini WiFi module as master, but should adapt to 
