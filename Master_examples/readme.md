@@ -1,9 +1,11 @@
-# ESP8266 firmware example
+# Master firmware examples
 
 Sample code to periodically read/write bytes from/to the AquaPing slave on the I2C bus. 
     Developed and tested with a Lolin D1 mini WiFi module as master, but should adapt to 
-    other devices using the Arduino IDE and equivalent libraries. The D1 mini uses the Espressif ESP8266 for WiFi capability, 
-    although wireless is not implemented here.
+    other devices using the Arduino IDE and equivalent libraries. The D1 mini uses the Espressif ESP8266 for WiFi capability.
+    
+- **D1_mini.ino**  D1 mini transfers data between PC and sensor
+-  **ThingSpeak.ino** D1 mini is used to: i) transfer data between PC and sensor and ii) upload data to ThingSpeak server over WiFi
     
  The D1 mini module provides a UART to USB interface to allow communication with a PC. 
     Any serial terminal program (eg. putty) should work; be sure to set equivalent baud rates. 
