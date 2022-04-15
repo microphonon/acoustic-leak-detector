@@ -33,7 +33,7 @@
 
      P4.0--4.7 NC
 
-     Firmware v 36 for Crowd Supply FFT PCB.
+     Firmware v 38 for Crowd Supply FFT PCB.
      MPH April 2022  */
 
 #include <msp430.h>
@@ -44,7 +44,7 @@
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 37
+# define FIRMWARE 38
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -89,6 +89,7 @@ void SetPins(void);
 void SetI2C(void);
 void SetADC(void);
 void SetDMA(void);
+void ReadCommands();
 void Sleep(void);
 int16_t CompSens(uint8_t ind);
 void MeasureNoise(void);
@@ -168,7 +169,7 @@ void main(void) {
     while(1)  //Top of main loop
     {
 /*  Check if new data received from master. Receive data asynchronous with slave loop,
-    but slave parameters only updated at start (here). Must be 2,4,6...or 16 bytes or else ignored.
+    but slave parameters only updated at start (here). Must be 2,4,6...or 2*COMMAND_BYTES or else ignored.
     Update Status_array with any new bytes. Slave will send Status_array any time requested. */
         while(1)
         {
@@ -183,56 +184,8 @@ void main(void) {
                 }
             }
             if (count_flag==0) break; //Incorrect input
-            //Did not break from while loop so there must be correct byte count. Read them
-            for(i=0;i<RxCount;i=i+2)
-            {
-               // SetParam(RxData[i],RxData[i+1]); //Update the status array
-                SetParam(*(RxData+i),*(RxData+i+1)); //Update the status array
-            }
-            RxCount=0; //All data from master read so clear buffer count
-            //Clear both counting arrays; any command received from master clears the counts
-            for (i=0; i < arraysize; i++)
-            {
-                trigger_count[i]=0;
-                ok_count[i]=0;
-                noise_count[i]=0;
-            }
-            /* Show the three sums clear in status, but do not need to explicitly clear them.
-               The cleared event arrays will sum to zero. */
-            Status_array[2] = 0; //Clear the below threshold count (sum_ok)
-            Status_array[3] = 0; //Clear the above threshold count (sum_trigger)
-            Status_array[4] = 0; //Clear the noise count (sum_noise)
-            //Check alarm status byte
-            if (Status_array[0] == 0x00) //No alarm
-            {
-                ALARM_CLEAR //Clear alarm pin
-            }
-            else if (Status_array[0] == 0x01) //Alarm condition detected by slave or has been set by master
-            {
-                ALARM_ON //Set alarm pin high
-                #ifndef SLEEP
-                Status_array[10]=0x01;
-                #else
-                Status_array[10]=0x00; //Put sensor into LPM0
-                #endif
-            }
-            else ; //Garbage input, ignore
-            //Put the following 5 parameters into persistent storage.
-            bsamples = Status_array[5];
-            arraysize = Status_array[6];
-            alarmsize = Status_array[7];
-            if(alarmsize > arraysize) //Coerce bad data from master. Can't have trigger count > event count
-            {
-                alarmsize = arraysize; //Make them the same
-                Status_array[7] = arraysize;
-            }
-            poll_nv = Status_array[8];
-            led = Status_array[9];
-            if (Status_array[10] == 0x00) //ASCII command P0 puts slave into LPM0
-            {
-                Sleep();
-            }
-        } //end of inner while loop that handles configuration commands
+            ReadCommands(); //Correct byte count; read master command bytes
+        }
 
         if(aflag==1)
         {
@@ -737,7 +690,7 @@ void SetParam(uint8_t p1, uint8_t p2)
            else if (p2 == 0x31) Status_array[9] = 0x01; //LEDs on
            else break; //Bad argument, ignore
            break;
-           default: break;
+       default: break;
            }
         }
 
@@ -810,6 +763,58 @@ void MeasureNoise() //Measure the background acoustic level at startup
         }
 
     }
+
+void ReadCommands() //Valid command string received from master
+{
+    for(i=0;i<RxCount;i=i+2)
+    {
+        // SetParam(RxData[i],RxData[i+1]); //Update the status array
+        SetParam(*(RxData+i),*(RxData+i+1)); //Update the status array
+    }
+    RxCount=0; //All data from master read so clear buffer count
+    //Clear both counting arrays; any command received from master clears the counts
+    for (i=0; i < arraysize; i++)
+    {
+        trigger_count[i]=0;
+        ok_count[i]=0;
+        noise_count[i]=0;
+    }
+    /* Show the three sums clear in status, but do not need to explicitly clear them.
+       The cleared event arrays will sum to zero. */
+        Status_array[2] = 0; //Clear the below threshold count (sum_ok)
+        Status_array[3] = 0; //Clear the above threshold count (sum_trigger)
+        Status_array[4] = 0; //Clear the noise count (sum_noise)
+        //Check alarm status byte
+        if (Status_array[0] == 0x00) //No leak alarm
+        {
+            ALARM_CLEAR //Clear alarm pin
+        }
+        else if (Status_array[0] == 0x01) //Alarm condition detected by slave or has been set by master
+        {
+            ALARM_ON //Set alarm pin high
+          #ifndef SLEEP
+            Status_array[10]=0x01;
+          #else
+            Status_array[10]=0x00; //Put sensor into LPM0
+         #endif
+        }
+        else ; //Garbage input, ignore
+        //Put the following 5 parameters into persistent storage.
+        bsamples = Status_array[5];
+        arraysize = Status_array[6];
+        alarmsize = Status_array[7];
+        if(alarmsize > arraysize) //Coerce bad data from master. Can't have trigger count > event count
+        {
+            alarmsize = arraysize; //Make them the same
+            Status_array[7] = arraysize;
+        }
+        poll_nv = Status_array[8];
+        led = Status_array[9];
+        if (Status_array[10] == 0x00) //ASCII command P0 puts slave into LPM0
+        {
+            Sleep();
+        }
+}
 
 void blink(uint8_t led_select) //Green (P2.0): 1; Red (P2.1): 2
     {
