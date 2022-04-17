@@ -89,11 +89,11 @@ void SetPins(void);
 void SetI2C(void);
 void SetADC(void);
 void SetDMA(void);
-void ReadCommands();
+void ReadCommands(void);
 void Sleep(void);
 int16_t CompSens(uint8_t ind);
 void MeasureNoise(void);
-uint32_t CheckMic();
+uint32_t CheckMic(void);
 uint16_t Rate(uint8_t rindx);
 void SetParam(uint8_t p1, uint8_t p2);
 void blink(uint8_t led_select);
@@ -148,13 +148,13 @@ void main(void) {
         ok_count[i]=0;
         noise_count[i]=0;
     }
-    for (i=0; i < MICSAMPLES; i++) //For averaging A-D converter acquisitions
+    for (i=0; i < MICSAMPLES; i++) //For averaging ADC acquisitions
     {
         sig_array[i]=0;
     }
     for (i=0; i < COMMAND_BYTES; i++)
     {
-        Size_check[i] = i+2; //Checks for presence of command byte pairs
+        Size_check[i] = i+2; //Use this array to check for presence of command byte pairs
     }
     RxCount = 0;
     aflag = 1; //aflag = 1 acquires background
@@ -171,7 +171,7 @@ void main(void) {
 /*  Check if new data received from master. Receive data asynchronous with slave loop,
     but slave parameters only updated at start (here). Must be 2,4,6...or 2*COMMAND_BYTES or else ignored.
     Update Status_array with any new bytes. Slave will send Status_array any time requested. */
-        while(1)
+        while(1) //Probably don't need to use a while loop here
         {
             if(RxCount==0) break;
             count_flag=0;
@@ -184,7 +184,7 @@ void main(void) {
                 }
             }
             if (count_flag==0) break; //Incorrect input
-            ReadCommands(); //Correct byte count; read master command bytes
+            ReadCommands(); //Correct byte count found; read master command bytes
         }
 
         if(aflag==1)
@@ -220,7 +220,7 @@ void main(void) {
                  mflag=0;
                  nflag=1;
                  eflag=0;
-                 if (led==1) blink(1); //Green LED
+                 if (led==1) blink(1); //Blink green LED
              }
          else
          /* Heard something exceeding sensitivity threshold but below ADC saturation.
@@ -294,7 +294,7 @@ void main(void) {
                              mflag=1; //Suspected leak signal detected
                              nflag=0;
                              eflag=0;
-                             if (led==1) blink(2); //Red LED
+                             if (led==1) blink(2); //Blink red LED once
                          }
                      }
                      else //Impulse noise detected; Not a leak signal, but count event as quiet
@@ -473,7 +473,7 @@ __interrupt void DMA_ISR(void)
             P1.6 UCB0 SDA
             P1.7 UCB0 SCL */
           P1DIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT5;
-          P1OUT |= BIT0; //If P1.0 is connected to Vcc
+          P1OUT |= BIT0; //If P1.0 is connected to Vcc (early design)
           //P1.2 Timer A1 output (TA1.1)
           P1SEL0 |= BIT2;
           P1SEL1 &= ~BIT2;
@@ -761,7 +761,6 @@ void MeasureNoise() //Measure the background acoustic level at startup
             }
             else break; //Quiet environment. Background baseline parameters found (bavg, bdev)
         }
-
     }
 
 void ReadCommands() //Valid command string received from master
