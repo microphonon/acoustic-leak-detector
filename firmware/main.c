@@ -33,6 +33,8 @@
 
      P4.0--4.7 NC
 
+     PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
+
      Firmware v 38 for Crowd Supply FFT PCB.
      MPH April 2022  */
 
@@ -749,17 +751,18 @@ void MeasureNoise() //Measure the background acoustic level at startup
             bdev = sqrt(bvar); //standard deviation
             /* Compare standard deviation to average. Large standard deviation is signature of
                unstable background. Decreasing NOISE_DIVIDE allows for more fluctuation in FFT data. */
-            if(NOISE_MULT*bdev > bavg)
+            if(NOISE_MULT*bdev > bavg) //Background too noisy. Blink red LED twice and re-run while loop
             {
-                if (led==1) //Background too noisy. Blink red LED twice and re-run while loop
-                {
-                    blink(2);
-                    TB0CCR0 = BLINK + BLINK + BLINK;
-                    LPM0;
-                    blink(2);
-                }
+                blink(2);
+                TB0CCR0 = BLINK + BLINK + BLINK;
+                LPM0;
+                blink(2);
             }
-            else break; //Quiet environment. Background baseline parameters found (bavg, bdev)
+            else //Quiet environment. Background baseline parameters found (bavg, bdev)
+            {
+                blink(1);
+                break; //Escape from while loop
+            }
         }
     }
 
