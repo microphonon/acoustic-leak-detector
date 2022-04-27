@@ -191,7 +191,8 @@ void main(void) {
 
         if(aflag==1)
         {
-        //The background count was changed or there was a system startup/reset. Get background level
+        /* The background count was changed or there was a system startup/reset. 
+           Start training session by acquiring and analyzing the background level */
             MeasureNoise();
             sens_nv = bavg + bdev;
             aflag = 0;
@@ -750,7 +751,7 @@ void MeasureNoise() //Measure the background acoustic level at startup
             bvar = dsum/(bsamples-1); //variance with Bessel correction
             bdev = sqrt(bvar); //standard deviation
             /* Compare standard deviation to average. Large standard deviation is signature of
-               unstable background. Decreasing NOISE_DIVIDE allows for more fluctuation in FFT data. */
+               unstable background. Increasing NOISE_MULT allows for more fluctuation in FFT data. */
             if(NOISE_MULT*bdev > bavg) //Background too noisy. Blink red LED twice and re-run while loop
             {
                 blink(2);
