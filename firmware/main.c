@@ -35,7 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware v 39 for Crowd Supply FFT PCB.
+     Firmware version 40 for Crowd Supply FFT PCB.
      MPH May 2022  */
 
 #include <msp430.h>
@@ -46,7 +46,7 @@
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 39
+# define FIRMWARE 40
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -73,6 +73,7 @@
 # define ALARM_CLEAR P3OUT &= ~BIT4;
 # define BIAS_ON P1OUT |= BIT3; //Pulsed bias on P1.3
 # define BIAS_OFF P1OUT &= ~BIT3;
+enum states {QUIET, NOISE, LEAK, IMPULSE};
 
 uint8_t i,sum_ok,sum_trigger,sum_noise,sat_flag;
 volatile uint8_t mflag, nflag, eflag, aflag;
@@ -92,6 +93,7 @@ void SetI2C(void);
 void SetADC(void);
 void SetDMA(void);
 void ReadCommands(void);
+void ArrayUpdate(uint8_t state);
 void Sleep(void);
 int16_t CompSens(uint8_t ind);
 void MeasureNoise(void);
@@ -202,24 +204,12 @@ void main(void) {
          sig_array[0] = CheckMic();
          if (sig_array[0] == 0) //Check for saturation of ADC and record as noise
          {
-             mflag = 0;
-             nflag = 0;
-             eflag = 1;
-             if (led==1) //Blink red LED twice
-             {
-                 blink(2);
-                 TB0CCR0 = BLINK + BLINK + BLINK;
-                 LPM0;
-                 blink(2);
-             }
+             ArrayUpdate(NOISE);
          }
          else if (sig_array[0] < sens_nv) //Nothing heard
-             {
-                 mflag=0;
-                 nflag=1;
-                 eflag=0;
-                 if (led==1) blink(1); //Blink green LED
-             }
+         {
+             ArrayUpdate(QUIET);
+         }
          else
          /* Heard something exceeding sensitivity threshold but below ADC saturation.
             Do rapid succession of microphone measurements. */
@@ -238,16 +228,7 @@ void main(void) {
                  }
                  if (sat_flag==1) //Record as environmental noise
                  {
-                     mflag = 0;
-                     nflag = 0;
-                     eflag = 1;
-                     if (led==1) //Blink red LED twice
-                     {
-                         blink(2);
-                         TB0CCR0 = BLINK + BLINK + BLINK;
-                         LPM0;
-                         blink(2);
-                     }
+                     ArrayUpdate(NOISE);
                  }
                  else //No ADC saturation occurred so analyze the microphone data set
                  {
@@ -276,37 +257,16 @@ void main(void) {
                         environmental noise. Increasing MEAN_MULT allows for more fluctuation in FFT data. */
                          if(MEAN_MULT*sdev > avg_sum4) //Environmental noise detected
                          {
-                             mflag = 0;
-                             nflag = 0;
-                             eflag = 1;
-                             if (led==1) //Blink red LED twice
-                             {
-                                blink(2);
-                                TB0CCR0 = BLINK + BLINK + BLINK;
-                                LPM0;
-                                blink(2);
-                             }
+                             ArrayUpdate(NOISE);
                          }
                          else
                          {
-                             mflag=1; //Suspected leak signal detected
-                             nflag=0;
-                             eflag=0;
-                             if (led==1) blink(2); //Blink red LED once
+                             ArrayUpdate(LEAK); //Record potential leak signal
                          }
                      }
                      else //Impulse noise detected; Not a leak signal, but count event as quiet
                      {
-                         mflag=0;
-                         nflag=1;
-                         eflag=0;
-                         if (led==1) //Blink green LED twice
-                         {
-                             blink(1);
-                             TB0CCR0 = BLINK + BLINK + BLINK;
-                             LPM0;
-                             blink(1);
-                         }
+                         ArrayUpdate(IMPULSE); //IMPULSE is same as QUIET except flash green LED twice
                      }
                  }
              }
@@ -583,7 +543,7 @@ void SetADC(void) //Configure timer and ADC12
             ADC12MCTL0 |= ADC12VRSEL_1; //ADC range between Vref and ground. Vref is set in CheckMic()
         }
 
-uint32_t CheckMic()
+uint32_t CheckMic(void)
  {
         uint16_t k, sat_count;
         uint32_t fft_sum;
@@ -638,6 +598,50 @@ uint32_t CheckMic()
             fft_sum += sqrt(a*a + b*b);
         }
         return fft_sum;
+}
+
+void ArrayUpdate(uint8_t state)
+{
+    switch(state){
+    case 0: //QUIET
+        mflag=0;
+        nflag=1;
+        eflag=0;
+        if (led==1) blink(1); //Blink green LED
+        break;
+    case 1: //NOISE
+        mflag = 0;
+        nflag = 0;
+        eflag = 1;
+        if (led==1) //Blink red LED twice
+        {
+            blink(2);
+            TB0CCR0 = BLINK + BLINK + BLINK;
+            LPM0;
+            blink(2);
+        }
+        break;
+    case 2: //LEAK
+        mflag=1;
+        nflag=0;
+        eflag=0;
+        if (led==1) blink(2); //Blink red LED once
+        break;
+    case 3: //IMPULSE
+        mflag=0;
+        nflag=1;
+        eflag=0;
+        if (led==1) //Blink green LED twice
+        {
+            blink(1);
+            TB0CCR0 = BLINK + BLINK + BLINK;
+            LPM0;
+            blink(1);
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 void SetParam(uint8_t p1, uint8_t p2)
@@ -708,7 +712,7 @@ uint16_t Rate(uint8_t rindx) //Timer is 1.024 kHz
       }
  }
 
-void MeasureNoise() //Measure the background acoustic level at startup
+void MeasureNoise(void) //Measure the background acoustic level at startup
     {
         uint8_t m;
         const uint8_t bgpoll = 1; //1 second
@@ -762,7 +766,7 @@ void MeasureNoise() //Measure the background acoustic level at startup
         }
     }
 
-void ReadCommands() //Valid command string received from master
+void ReadCommands(void) //Valid command string received from master
 {
     for(i=0;i<RxCount;i=i+2)
     {
@@ -833,7 +837,7 @@ void blink(uint8_t led_select) //Green (P2.0): 1; Red (P2.1): 2
         P2OUT &= ~BIT1;
     }
 
-void Sleep()
+void Sleep(void)
 {
     /* Idle here until the ASCII sequence P1 is received from master on I2C.
        This is a polled wakeup from LPM0 because CPU is needed to check for data transfer. */
