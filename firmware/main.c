@@ -6,7 +6,7 @@
    ACLK = 32768 Hz sourced by Timer_B
    SMCLK sources Timer A1 for ADC12
 
-   Enable DSP by by placing the following line
+   Enable DSP by by placing the following line:
    ${PROJECT_ROOT}/dsplib/include
    in CCS Build: MSP430 Compiler: Include Options
    Must have the TI dsplib folder is in project directory
@@ -35,8 +35,8 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 40 for Crowd Supply FFT PCB.
-     MPH May 2022  */
+     Firmware version 41 for Crowd Supply FFT PCB.
+     Licensed under Creative Commons. MicroPhonon May 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -46,7 +46,7 @@
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 40
+# define FIRMWARE 41
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -73,10 +73,17 @@
 # define ALARM_CLEAR P3OUT &= ~BIT4;
 # define BIAS_ON P1OUT |= BIT3; //Pulsed bias on P1.3
 # define BIAS_OFF P1OUT &= ~BIT3;
-enum states {QUIET, NOISE, LEAK, IMPULSE};
 
-uint8_t i,sum_ok,sum_trigger,sum_noise,sat_flag;
-volatile uint8_t mflag, nflag, eflag, aflag;
+uint8_t i, j, sum_ok, sum_trigger, sum_noise;
+enum states {QUIET, NOISE, LEAK, IMPULSE};
+struct  //Save some memory by using a bit-field for binary data
+{
+    uint8_t leak:1;
+    uint8_t quiet:1;
+    uint8_t noise:1;
+    uint8_t background:1;
+    uint8_t saturation:1;
+} flag;
 uint8_t trigger_count[256], ok_count[256], noise_count[256]; //Counting arrays
 uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs, noise_array[256];
 uint16_t sens_nv, bavg, bdev; //Global variables for ambient background
@@ -161,7 +168,7 @@ void main(void) {
         Size_check[i] = i+2; //Use this array to check for presence of command byte pairs
     }
     RxCount = 0;
-    aflag = 1; //aflag = 1 acquires background
+    flag.background = 1; //Set to acquire the background
     /* The following clear-reset sequences must be used to enable Channels 1 and 2
        of the DMA, which are used for I2C data transfer. */
     DMA1CTL &= ~DMAEN;
@@ -188,11 +195,11 @@ void main(void) {
         }
        /* Check if background count was changed by master or there was a system startup/reset.
            Start training session by acquiring and analyzing the background level */
-        if(aflag==1)
+        if(flag.background == 1)
         {
             MeasureNoise();
             sens_nv = bavg + bdev;
-            aflag = 0;
+            flag.background = 0; //Clear the flag
         }
 
     //Signal acquisition code follows
@@ -200,7 +207,7 @@ void main(void) {
          TB0CCR0 = Rate(poll_nv); //Polling period for main loop
          LPM0;      //Wait in low power mode for timeout or status query from master
          /* Timeout.  Check the microphone signal level and perform impulse noise rejection.
-            mflag, nflag, and eflag are used to update the counting arrays */
+            flag.leak, flag.quiet, and flag.noise are used to update the counting arrays */
          sig_array[0] = CheckMic();
          if (sig_array[0] == 0) //Check for saturation of ADC and record as noise
          {
@@ -214,7 +221,7 @@ void main(void) {
          /* Heard something exceeding sensitivity threshold but below ADC saturation.
             Do rapid succession of microphone measurements. */
              {
-                 sat_flag=0;
+                 flag.saturation = 0;
                  for (i=1; i < MICSAMPLES; i++)
                  {
                      TB0CCR0=NWAIT; //Pause in LPM0 between acquisitions
@@ -222,25 +229,25 @@ void main(void) {
                      sig_array[i] = CheckMic();
                      if (sig_array[i]==0) //Check for ADC saturation
                      {
-                         sat_flag=1;
+                         flag.saturation = 1;
                          break;
                      }
                  }
-                 if (sat_flag==1) //Record as environmental noise
+                 if (flag.saturation == 1) //Record as environmental noise
                  {
                      ArrayUpdate(NOISE);
                  }
                  else //No ADC saturation occurred so analyze the microphone data set
                  {
-                     mflag = 0; //Re-purpose mflag to count above threshold events
+                     j = 0;
                      sum4 = 0;
                      PSigs = sig_array; //Point to first element in sig_array
                      for (i=0; i < MICSAMPLES; ++i)
                      {
-                         if (*PSigs > sens_nv) ++mflag;
+                         if (*PSigs > sens_nv) ++j;
                          sum4 += *PSigs++;
                      }
-                     if (mflag == MICSAMPLES) //We have sustained signal. Check if this is from environmental noise
+                     if (j == MICSAMPLES) //We have sustained signal. Check if this is from environmental noise
                      {
                          avg_sum4 = sum4/MICSAMPLES; //Average the integrated FFT signals
                          //Calculate standard deviation
@@ -279,9 +286,9 @@ void main(void) {
                       noise_count[i]=noise_count[i+1];
                   }
               //New data appended
-              trigger_count[arraysize-1]=mflag;
-              ok_count[arraysize-1]=nflag;
-              noise_count[arraysize-1]=eflag;
+              trigger_count[arraysize-1] = flag.leak;
+              ok_count[arraysize-1] = flag.quiet;
+              noise_count[arraysize-1] = flag.noise;
               //Sum the arrays with new data; the three counts will be placed in Status_array
               sum_ok = 0;
               sum_trigger = 0;
@@ -600,19 +607,19 @@ uint32_t CheckMic(void)
         return fft_sum;
 }
 
-void ArrayUpdate(uint8_t state)
+void ArrayUpdate(uint8_t state) //Cases defined by the global enum
 {
     switch(state){
     case 0: //QUIET
-        mflag=0;
-        nflag=1;
-        eflag=0;
+        flag.leak = 0x00;
+        flag.quiet = 0x01;
+        flag.noise = 0x00;
         if (led==1) blink(1); //Blink green LED
         break;
     case 1: //NOISE
-        mflag = 0;
-        nflag = 0;
-        eflag = 1;
+        flag.leak = 0x00;
+        flag.quiet = 0x00;
+        flag.noise = 0x01;
         if (led==1) //Blink red LED twice
         {
             blink(2);
@@ -622,15 +629,15 @@ void ArrayUpdate(uint8_t state)
         }
         break;
     case 2: //LEAK
-        mflag=1;
-        nflag=0;
-        eflag=0;
+        flag.leak = 0x01;
+        flag.quiet = 0x00;
+        flag.noise = 0x00;
         if (led==1) blink(2); //Blink red LED once
         break;
     case 3: //IMPULSE
-        mflag=0;
-        nflag=1;
-        eflag=0;
+        flag.leak = 0x00;
+        flag.quiet = 0x01;
+        flag.noise = 0x00;
         if (led==1) //Blink green LED twice
         {
             blink(1);
@@ -655,7 +662,7 @@ void SetParam(uint8_t p1, uint8_t p2)
         else
         {
             for(ii=0;ii<SBYTES;ii++) Status_array[ii] = Default[ii];
-            aflag = 1; //Get new background
+            flag.background = 1; //Get new background
         }
         break;
         case 0x61:  //Alarm status
@@ -673,7 +680,7 @@ void SetParam(uint8_t p1, uint8_t p2)
             else
             {
                 Status_array[5] = p2; //Set background acquire samples
-                aflag = 1; //Acquire new background
+                flag.background = 1; //Acquire a new background
             }
             break;
        case 0x65:   //Set size of counting arrays (10--255)
