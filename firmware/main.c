@@ -35,8 +35,8 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 41 for Crowd Supply FFT PCB.
-     Licensed under Creative Commons. MicroPhonon May 2022  */
+     Firmware version 42 for Crowd Supply FFT PCB.
+     Licensed under Creative Commons. MicroPhonon June 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -44,16 +44,32 @@
 #include <stdbool.h>
 #include "DSPLib.h"
 
+void SetTimer(void);
+void SetClock(void);
+void SetPins(void);
+void SetI2C(void);
+void SetADC(void);
+void SetDMA(void);
+void ReadCommands(void);
+void ArrayUpdate(uint8_t state);
+void Sleep(void);
+int16_t CompSens(uint8_t ind);
+void MeasureNoise(void);
+uint32_t CheckMic(void);
+uint16_t Rate(uint8_t rindx);
+void SetParam(uint8_t p1, uint8_t p2);
+void blink(uint8_t led_select);
+
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 41
+# define FIRMWARE 42
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
 # define COMMAND_BYTES 8 //Number control commands
 # define DATASET 20 //Default value for arraysize
 # define TRIGGER 18 //Default value for alarmsize
- //The following delays assume Timer B is 1.024 kHz (DCO/32)
+//The following delays assume Timer B is 1.024 kHz (DCO/32)
 # define IWAIT 5 // Time to wait before enabling ADC
 # define NWAIT 45 //Time interval between multiple acquisitions
 # define SAMPLING_PERIOD 239 //Counts for 8 MHz SMCLK; 240 gives 33.333 kHz
@@ -74,9 +90,8 @@
 # define BIAS_ON P1OUT |= BIT3; //Pulsed bias on P1.3
 # define BIAS_OFF P1OUT &= ~BIT3;
 
-uint8_t i, j, sum_ok, sum_trigger, sum_noise;
 enum states {QUIET, NOISE, LEAK, IMPULSE};
-struct  //Save some memory by using a bit-field for binary data
+struct  //Save some memory by using a bit-field for binary flags
 {
     uint8_t leak:1;
     uint8_t quiet:1;
@@ -85,29 +100,15 @@ struct  //Save some memory by using a bit-field for binary data
     uint8_t saturation:1;
 } flag;
 uint8_t trigger_count[256], ok_count[256], noise_count[256]; //Counting arrays
-uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs, noise_array[256];
+uint32_t noise_array[256]; //Reserve array space for the background acquisition function
 uint16_t sens_nv, bavg, bdev; //Global variables for ambient background
-int32_t diff;
-uint8_t Status_array[SBYTES], RxData[COMMAND_BYTES + COMMAND_BYTES], Size_check[COMMAND_BYTES], RxBuffer;
-volatile uint8_t RxCount;
-volatile uint8_t *PRxData; //Pointers to received data array
-uint16_t ADC_array[ADC_SAMPLES],*ADC;
+uint8_t Status_array[SBYTES], RxData[COMMAND_BYTES + COMMAND_BYTES], RxBuffer;
+volatile uint8_t RxCount, *PRxData; //For master command data
+uint16_t ADC_array[ADC_SAMPLES], *ADC;
+// Analog input signal and FFT result
+DSPLIB_DATA(input,MSP_ALIGN_FFT_Q15(ADC_SAMPLES))
+_q15 input[ADC_SAMPLES];
 
-void SetTimer(void);
-void SetClock(void);
-void SetPins(void);
-void SetI2C(void);
-void SetADC(void);
-void SetDMA(void);
-void ReadCommands(void);
-void ArrayUpdate(uint8_t state);
-void Sleep(void);
-int16_t CompSens(uint8_t ind);
-void MeasureNoise(void);
-uint32_t CheckMic(void);
-uint16_t Rate(uint8_t rindx);
-void SetParam(uint8_t p1, uint8_t p2);
-void blink(uint8_t led_select);
 /* Initial firmware settings. Any adjustment to these 5 settings by master
 will persist on power off. These variables must be placed outside main program. */
 #pragma PERSISTENT(arraysize)
@@ -121,13 +122,14 @@ uint8_t bsamples = BACKGROUND_SAMPLES;
 #pragma PERSISTENT(led)
 uint8_t led = 0x01; //On (0x01), off (0x00)
 
-// Analog input signal and FFT result
-DSPLIB_DATA(input,MSP_ALIGN_FFT_Q15(ADC_SAMPLES))
-_q15 input[ADC_SAMPLES];
-
 void main(void) {
 
     WDTCTL = WDTPW | WDTHOLD;   //Stop watchdog timer
+
+    uint8_t i, j, sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
+    uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
+    int32_t diff;
+
     SetPins();
     SetI2C();
     SetClock();
@@ -179,11 +181,10 @@ void main(void) {
 
     while(1)  //Top of main loop
     {
-
     /*  Check if new data received from master. Receive data asynchronous with slave loop,
         but slave parameters only updated at start (here). Must be 2,4,6...or 2*COMMAND_BYTES or else ignored.
         Update Status_array with any new bytes. Slave will send Status_array any time requested. */
-        if(RxCount !=0)
+        if(RxCount != 0)
         {
             for(i=0; i < COMMAND_BYTES; i++) //Check if any byte pairs arrived on I2C bus from master
             {
@@ -201,7 +202,6 @@ void main(void) {
             sens_nv = bavg + bdev;
             flag.background = 0; //Clear the flag
         }
-
     //Signal acquisition code follows
          for (i=0; i < MICSAMPLES; i++) sig_array[i]=0; //Clear just in case
          TB0CCR0 = Rate(poll_nv); //Polling period for main loop
@@ -260,8 +260,8 @@ void main(void) {
                          }
                          var5 = sum5/(MICSAMPLES-1); //variance
                          sdev = sqrt(var5); //standard deviation
-                         /* Compare standard deviation to signal average. Large standard deviation is signature of
-                        environmental noise. Increasing MEAN_MULT allows for more fluctuation in FFT data. */
+                   /* Compare standard deviation to signal average. Large standard deviation is signature of
+                      environmental noise. Increasing MEAN_MULT allows for more fluctuation in FFT data. */
                          if(MEAN_MULT*sdev > avg_sum4) //Environmental noise detected
                          {
                              ArrayUpdate(NOISE);
@@ -655,7 +655,7 @@ void SetParam(uint8_t p1, uint8_t p2)
 {
     uint8_t ii;
     //Default status array used only for system reset
-    uint8_t Default[] = {0,0,0,0,0,BACKGROUND_SAMPLES,DATASET,TRIGGER,2,1,1,FIRMWARE};
+    const uint8_t Default[] = {0,0,0,0,0,BACKGROUND_SAMPLES,DATASET,TRIGGER,2,1,1,FIRMWARE};
     switch(p1){
     case 0x72:  //Sensor reset
         if(p2 != 0x72) ; //Bad argument, ignore
@@ -775,7 +775,8 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
 
 void ReadCommands(void) //Valid command string received from master
 {
-    for(i=0;i<RxCount;i=i+2)
+    uint8_t i;
+    for(i=0; i < RxCount; i=i+2)
     {
         // SetParam(RxData[i],RxData[i+1]); //Update the status array
         SetParam(*(RxData+i),*(RxData+i+1)); //Update the status array
