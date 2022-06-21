@@ -1,4 +1,4 @@
-/* Firmware for acoustic leak detector running on 48-pin MCU
+/* Firmware for the AquaPing acoustic leak detector running on a 48-pin MCU
    MSP430FR5994*. Developed with TI MSP-EXP430FR5994 Launchpad
    using Code Composer Studio v9.3 on Ubuntu-Linux.
 
@@ -35,8 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 42 for Crowd Supply FFT PCB.
-     Licensed under Creative Commons. MicroPhonon June 2022  */
+     Firmware version 42. Licensed under Creative Commons. MicroPhonon June 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -125,8 +124,9 @@ uint8_t led = 0x01; //On (0x01), off (0x00)
 void main(void) {
 
     WDTCTL = WDTPW | WDTHOLD;   //Stop watchdog timer
-
-    uint8_t i, j, sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
+    
+    volatile uint8_t i, j;
+    uint8_t sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
     uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
     int32_t diff;
 
@@ -552,7 +552,8 @@ void SetADC(void) //Configure timer and ADC12
 
 uint32_t CheckMic(void)
  {
-        uint16_t k, sat_count;
+        volatile uint16_t k;
+        uint16_t sat_count;
         uint32_t fft_sum;
         const uint16_t fft_start = FFT_LOW + FFT_LOW; //2x needed to account for real & complex component at each frequency
         const uint16_t fft_count = fft_start + FFT_HIGH - FFT_LOW + 1; //Frequency elements in FFT sub-array
@@ -653,7 +654,7 @@ void ArrayUpdate(uint8_t state) //Cases defined by the global enum
 
 void SetParam(uint8_t p1, uint8_t p2)
 {
-    uint8_t ii;
+    volatile uint8_t ii;
     //Default status array used only for system reset
     const uint8_t Default[] = {0,0,0,0,0,BACKGROUND_SAMPLES,DATASET,TRIGGER,2,1,1,FIRMWARE};
     switch(p1){
@@ -721,7 +722,7 @@ uint16_t Rate(uint8_t rindx) //Timer is 1.024 kHz
 
 void MeasureNoise(void) //Measure the background acoustic level at startup
     {
-        uint8_t m;
+        volatile uint8_t m;
         const uint8_t bgpoll = 1; //1 second
         uint32_t bsum, dsum, *BSigs;
         uint16_t bvar;
@@ -775,7 +776,7 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
 
 void ReadCommands(void) //Valid command string received from master
 {
-    uint8_t i;
+    volatile uint8_t i;
     for(i=0; i < RxCount; i=i+2)
     {
         // SetParam(RxData[i],RxData[i+1]); //Update the status array
