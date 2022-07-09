@@ -35,7 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 42. Licensed under Creative Commons. MicroPhonon June 2022  */
+     Firmware version 43. Licensed under Creative Commons. MicroPhonon July 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -61,7 +61,7 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 42
+# define FIRMWARE 43
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -82,7 +82,7 @@ void blink(uint8_t led_select);
 # define MEAN_MULT 2 //Multiplies the standard deviation to check for environmental noise
 //Next 2 parameters help set background noise level
 # define BACKGROUND_SAMPLES 30 //Default value 30 seconds; can be changed by user in range 10--255
-# define NOISE_MULT 2 //Larger NOISE_MULT allows more fluctuation in ambient background
+const uint8_t NOISE_MULT = 2; //Larger NOISE_MULT allows more fluctuation in ambient background
 # define BLINK 100 //LED flash time
 # define ALARM_ON P3OUT |= BIT4; //Alarm high on P3.4
 # define ALARM_CLEAR P3OUT &= ~BIT4;
@@ -90,6 +90,7 @@ void blink(uint8_t led_select);
 # define BIAS_OFF P1OUT &= ~BIT3;
 
 enum states {QUIET, NOISE, LEAK, IMPULSE};
+
 struct  //Save some memory by using a bit-field for binary flags
 {
     uint8_t leak:1;
@@ -98,7 +99,14 @@ struct  //Save some memory by using a bit-field for binary flags
     uint8_t background:1;
     uint8_t saturation:1;
 } flag;
-uint8_t trigger_count[256], ok_count[256], noise_count[256]; //Counting arrays
+
+struct //These are the 3 counting arrays
+{
+    uint8_t trigger;
+    uint8_t ok;
+    uint8_t noise;
+}counts[256];
+
 uint32_t noise_array[256]; //Reserve array space for the background acquisition function
 uint16_t sens_nv, bavg, bdev; //Global variables for ambient background
 uint8_t Status_array[SBYTES], RxData[COMMAND_BYTES + COMMAND_BYTES], RxBuffer;
@@ -124,7 +132,7 @@ uint8_t led = 0x01; //On (0x01), off (0x00)
 void main(void) {
 
     WDTCTL = WDTPW | WDTHOLD;   //Stop watchdog timer
-    
+
     volatile uint8_t i, j;
     uint8_t sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
     uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
@@ -157,9 +165,9 @@ void main(void) {
     //Initialize the three event counter arrays; will be working with array subset defined by arraysize
     for (i=0; i < arraysize; i++)
     {
-        trigger_count[i]=0;
-        ok_count[i]=0;
-        noise_count[i]=0;
+        counts[i].trigger=0;
+        counts[i].ok=0;
+        counts[i].noise=0;
     }
     for (i=0; i < MICSAMPLES; i++) //For averaging ADC acquisitions
     {
@@ -281,23 +289,23 @@ void main(void) {
             and newest data appended. Shift array indexes by 1. Remove oldest data first. */
               for (i=0; i < arraysize-1; i++)
                   {
-                      trigger_count[i]=trigger_count[i+1];
-                      ok_count[i]=ok_count[i+1];
-                      noise_count[i]=noise_count[i+1];
+                      counts[i].trigger=counts[i+1].trigger;
+                      counts[i].ok=counts[i+1].ok;
+                      counts[i].noise=counts[i+1].noise;
                   }
               //New data appended
-              trigger_count[arraysize-1] = flag.leak;
-              ok_count[arraysize-1] = flag.quiet;
-              noise_count[arraysize-1] = flag.noise;
+              counts[arraysize-1].trigger = flag.leak;
+              counts[arraysize-1].ok = flag.quiet;
+              counts[arraysize-1].noise = flag.noise;
               //Sum the arrays with new data; the three counts will be placed in Status_array
               sum_ok = 0;
               sum_trigger = 0;
               sum_noise = 0;
               for (i=0; i < arraysize; i++)
               {
-                  sum_trigger += trigger_count[i];
-                  sum_ok += ok_count[i];
-                  sum_noise += noise_count[i];
+                  sum_trigger += counts[i].trigger;
+                  sum_ok += counts[i].ok;
+                  sum_noise += counts[i].noise;
               }
               //Count data placed in status array
               Status_array[2] = sum_ok;
@@ -314,9 +322,9 @@ void main(void) {
                               //Alarm identified; clear arrays so can start counting fresh
                               for (i=0; i < arraysize; i++)
                               {
-                                  trigger_count[i]=0;
-                                  ok_count[i]=0;
-                                  noise_count[i]=0;
+                                  counts[i].trigger=0;
+                                  counts[i].ok=0;
+                                  counts[i].noise=0;
                               }
                           }
                           else Status_array[0] = 0x00; //No alarm
@@ -584,7 +592,7 @@ uint32_t CheckMic(void)
         // Perform real FFT with fixed scaling on ADC data
         sat_count=0;
         ADC = ADC_array; //Point to first element of ADC_array
-        for (k=0;k<ADC_SAMPLES;k++)
+        for (k=0;k < ADC_SAMPLES;k++)
         {
             input[k] = *ADC++; //Copy time data to input array
             //Check for ADC saturation; ADC_MAX is 4095 for 12-bit
@@ -596,7 +604,7 @@ uint32_t CheckMic(void)
         }
         status = MAP_msp_fft_fixed_q15(&fftParams, input);
         msp_checkStatus(status);
-        for (k=0;k<ADC_SAMPLES;k++) fft_array[k] = input[k]; //Copy the complex FFT data
+        for (k=0;k < ADC_SAMPLES;k++) fft_array[k] = input[k]; //Copy the complex FFT data
         pfft = fft_array + fft_start; //Point pfft to first element of FFT sub-array
         //Calculate complex FFT amplitude over specified frequency range
         for (k=fft_start;k<fft_count;k++)
@@ -662,7 +670,7 @@ void SetParam(uint8_t p1, uint8_t p2)
         if(p2 != 0x72) ; //Bad argument, ignore
         else
         {
-            for(ii=0;ii<SBYTES;ii++) Status_array[ii] = Default[ii];
+            for(ii=0;ii < SBYTES;ii++) Status_array[ii] = Default[ii];
             flag.background = 1; //Get new background
         }
         break;
@@ -792,9 +800,9 @@ void ReadCommands(void) //Valid command string received from master
     {
         for (i=0; i < arraysize; i++)
         {
-            trigger_count[i]=0;
-            ok_count[i]=0;
-            noise_count[i]=0;
+            counts[i].trigger=0;
+            counts[i].ok=0;
+            counts[i].noise=0;
         }
         /* Show the three sums clear in status, but do not need to explicitly clear them.
             The cleared event arrays will sum to zero. */
