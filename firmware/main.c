@@ -35,7 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 43. Licensed under Creative Commons. MicroPhonon July 2022  */
+     Firmware version 44. Licensed under Creative Commons. MicroPhonon July 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -61,7 +61,7 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 43
+# define FIRMWARE 44
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -82,7 +82,7 @@ void blink(uint8_t led_select);
 # define MEAN_MULT 2 //Multiplies the standard deviation to check for environmental noise
 //Next 2 parameters help set background noise level
 # define BACKGROUND_SAMPLES 30 //Default value 30 seconds; can be changed by user in range 10--255
-const uint8_t NOISE_MULT = 2; //Larger NOISE_MULT allows more fluctuation in ambient background
+# define NOISE_MULT 2 //Larger NOISE_MULT allows more fluctuation in ambient background
 # define BLINK 100 //LED flash time
 # define ALARM_ON P3OUT |= BIT4; //Alarm high on P3.4
 # define ALARM_CLEAR P3OUT &= ~BIT4;
@@ -91,13 +91,13 @@ const uint8_t NOISE_MULT = 2; //Larger NOISE_MULT allows more fluctuation in amb
 
 enum states {QUIET, NOISE, LEAK, IMPULSE};
 
-struct  //Save some memory by using a bit-field for binary flags
+struct  //Save some memory by using Boolean flags
 {
-    uint8_t leak:1;
-    uint8_t quiet:1;
-    uint8_t noise:1;
-    uint8_t background:1;
-    uint8_t saturation:1;
+    bool leak;
+    bool quiet;
+    bool noise;
+    bool background;
+    bool saturation;
 } flag;
 
 struct //These are the 3 counting arrays
@@ -105,7 +105,7 @@ struct //These are the 3 counting arrays
     uint8_t trigger;
     uint8_t ok;
     uint8_t noise;
-}counts[256];
+} counts[256];
 
 uint32_t noise_array[256]; //Reserve array space for the background acquisition function
 uint16_t sens_nv, bavg, bdev; //Global variables for ambient background
@@ -169,9 +169,9 @@ void main(void) {
         counts[i].ok=0;
         counts[i].noise=0;
     }
-    for (i=0; i < MICSAMPLES; i++) //For averaging ADC acquisitions
+    for (i=0; i < MICSAMPLES; i++)
     {
-        sig_array[i]=0;
+        sig_array[i]=0; //For averaging ADC acquisitions
     }
     for (i=0; i < COMMAND_BYTES; i++)
     {
@@ -247,7 +247,7 @@ void main(void) {
                  }
                  else //No ADC saturation occurred so analyze the microphone data set
                  {
-                     j = 0;
+                     j=0;
                      sum4 = 0;
                      PSigs = sig_array; //Point to first element in sig_array
                      for (i=0; i < MICSAMPLES; ++i)
