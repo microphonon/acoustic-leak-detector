@@ -494,7 +494,7 @@ __interrupt void DMA_ISR(void)
                    CSCTL5 &= ~LFXTOFFG;                // Clear XT1 fault flag
                    SFRIFG1 &= ~OFIFG;
                }while (SFRIFG1 & OFIFG);               // Test oscillator fault flag
-            //   CSCTL0_H = 0;                           // Lock CS registers
+            CSCTL0_H = 0;                           // Lock CS registers
         }
 
  void SetTimer(void) //TB0 module at 1024 kHz
