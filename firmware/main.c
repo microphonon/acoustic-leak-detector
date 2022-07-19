@@ -3,8 +3,8 @@
    using Code Composer Studio v9.3 on Ubuntu-Linux.
 
    MCLK = SMCLK = 8 MHz sourced by DCO
-   ACLK = 32768 Hz sourced by Timer_B
-   SMCLK sources Timer A1 for ADC12
+   ACLK = 32768 Hz sourced by Timer_B0
+   SMCLK sources Timer_A1 for ADC12
 
    Enable DSP by by placing the following line:
    ${PROJECT_ROOT}/dsplib/include
@@ -35,7 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 44. Licensed under Creative Commons. MicroPhonon July 2022  */
+     Firmware version 45. Licensed under Creative Commons. MicroPhonon July 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -61,7 +61,7 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 44
+# define FIRMWARE 45
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -210,13 +210,14 @@ void main(void) {
             sens_nv = bavg + bdev;
             flag.background = 0; //Clear the flag
         }
-    //Signal acquisition code follows
          for (i=0; i < MICSAMPLES; i++) sig_array[i]=0; //Clear just in case
-         TB0CCR0 = Rate(poll_nv); //Polling period for main loop
-         LPM0;      //Wait in low power mode for timeout or status query from master
-         /* Timeout.  Check the microphone signal level and perform impulse noise rejection.
-            flag.leak, flag.quiet, and flag.noise are used to update the counting arrays */
-         sig_array[0] = CheckMic();
+
+         TA1CTL &= ~MC__UP; //Halt timer TA1 before entering sleep mode to save power
+         TB0CCR0 = Rate(poll_nv); //Polling period for main loop with timer TB0
+         LPM3;      //Wait in LPM3 for timeout or status query from master
+         // Timeout at TB0.
+         TA1CTL |= MC__UP; //Re-enable timer TA1 for ADC12. Signal acquisition code follows
+         sig_array[0] = CheckMic(); // Check the microphone signal level
          if (sig_array[0] == 0) //Check for saturation of ADC and record as noise
          {
              ArrayUpdate(NOISE);
@@ -374,7 +375,7 @@ void main(void) {
     #pragma vector=TIMER0_B0_VECTOR
      __interrupt void Timer_B (void)
      {
-         LPM0_EXIT;
+         LPM3_EXIT;
      }
 
     #pragma vector = EUSCI_B0_VECTOR
@@ -476,6 +477,8 @@ __interrupt void DMA_ISR(void)
           //Set pins for 32.768 kHz crystal to source LFXT
           PJSEL0 = BIT4 | BIT5;
           PJSEL1 &= ~(BIT4 + BIT5);
+          PJOUT = 0;
+          PJDIR = 0xFFFF;
     }
 
  void SetClock(void) //Use 32768 Hz external crystal
@@ -491,7 +494,7 @@ __interrupt void DMA_ISR(void)
                    CSCTL5 &= ~LFXTOFFG;                // Clear XT1 fault flag
                    SFRIFG1 &= ~OFIFG;
                }while (SFRIFG1 & OFIFG);               // Test oscillator fault flag
-               CSCTL0_H = 0;                           // Lock CS registers
+            //   CSCTL0_H = 0;                           // Lock CS registers
         }
 
  void SetTimer(void) //TB0 module at 1024 kHz
@@ -548,7 +551,6 @@ void SetADC(void) //Configure timer and ADC12
             TA1CCTL1 = OUTMOD_3;  // Set/reset
             TA1CCR1 = SAMPLE_TIME; // PWM Duty Cycle
 
-            ADC12CTL0 |= ADC12ON; //ADC12 on
             /* ADC triggered by Timer_A1 at 33.333 kHz; ADC clock is SMCLK at 8 MHz; see 5994 data sheet
                TA1.1 output selected with ADC12SHS_4; SMCLK; single-channel repeat */
             ADC12CTL1 = ADC12SHS_4 | ADC12SSEL_3 | ADC12CONSEQ_2;
@@ -556,6 +558,7 @@ void SetADC(void) //Configure timer and ADC12
             ADC12CTL2 = ADC12RES_2;  //12-bit conversion
             ADC12MCTL0 |= ADC12INCH_4;   //Input on A4 (P1.4)
             ADC12MCTL0 |= ADC12VRSEL_1; //ADC range between Vref and ground. Vref is set in CheckMic()
+            ADC12CTL0 |= ADC12ON; //ADC12 on
         }
 
 uint32_t CheckMic(void)
@@ -741,8 +744,11 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
             for(m=0; m < bsamples; m++) noise_array[m]=0; //Clear noise array
             for(m=0; m < bsamples; m++) //Acquisition time = bsamples*Rate(bgpoll)
             {
+               // TA1CTL &= ~MC__UP; //Halt timer TA1. Use for testing with Energy Trace
                 TB0CCR0 = Rate(bgpoll); //Polling period
                 LPM0;      //Wait in low power mode for timeout or status query from master
+                //LPM3; Use for testing
+               // TA1CTL |= MC__UP; //Re-enable timer TA1 for ADC12. Use for testing
                 //Timeout interrupt exits from LPM0. Get the microphone signal.
                 noise_array[m] = CheckMic();
                 //Check for ADC saturation. Discard and repeat if needed
@@ -876,3 +882,4 @@ void Sleep(void)
         else RxCount=0;
     }
 }
+
