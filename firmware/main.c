@@ -35,7 +35,7 @@
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 45. Licensed under Creative Commons. MicroPhonon July 2022  */
+     Firmware version 46. Licensed under Creative Commons. MicroPhonon August 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -61,7 +61,7 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 45
+# define FIRMWARE 46
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -91,13 +91,13 @@ void blink(uint8_t led_select);
 
 enum states {QUIET, NOISE, LEAK, IMPULSE};
 
-struct  //Save some memory by using Boolean flags
+struct  //Use a bit-field for binary flags
 {
-    bool leak;
-    bool quiet;
-    bool noise;
-    bool background;
-    bool saturation;
+    uint8_t leak:1;
+    uint8_t quiet:1;
+    uint8_t noise:1;
+    uint8_t background:1;
+    uint8_t saturation:1;
 } flag;
 
 struct //These are the 3 counting arrays
@@ -211,12 +211,9 @@ void main(void) {
             flag.background = 0; //Clear the flag
         }
          for (i=0; i < MICSAMPLES; i++) sig_array[i]=0; //Clear just in case
-
-         TA1CTL &= ~MC__UP; //Halt timer TA1 before entering sleep mode to save power
          TB0CCR0 = Rate(poll_nv); //Polling period for main loop with timer TB0
          LPM3;      //Wait in LPM3 for timeout or status query from master
          // Timeout at TB0.
-         TA1CTL |= MC__UP; //Re-enable timer TA1 for ADC12. Signal acquisition code follows
          sig_array[0] = CheckMic(); // Check the microphone signal level
          if (sig_array[0] == 0) //Check for saturation of ADC and record as noise
          {
@@ -233,8 +230,8 @@ void main(void) {
                  flag.saturation = 0;
                  for (i=1; i < MICSAMPLES; i++)
                  {
-                     TB0CCR0=NWAIT; //Pause in LPM0 between acquisitions
-                     LPM0;
+                     TB0CCR0=NWAIT; //Pause in LPM* between acquisitions
+                     LPM3;
                      sig_array[i] = CheckMic();
                      if (sig_array[i]==0) //Check for ADC saturation
                      {
@@ -414,7 +411,7 @@ __interrupt void DMA_ISR(void)
   {
     case 0: break;
     case 2: // DMA0IFG = DMA Channel 0. Transfer ADC data
-        __bic_SR_register_on_exit(LPM0_bits);
+        __bic_SR_register_on_exit(LPM3_bits);
       break;
     case 4: break;  // DMA1IFG = DMA Channel 1. Transmit I2C data, no interrupt used
     case 6:  // DMA2IFG = DMA Channel 2. Receive single I2C command bytes
@@ -447,7 +444,7 @@ __interrupt void DMA_ISR(void)
             P1.6 UCB0 SDA
             P1.7 UCB0 SCL */
           P1DIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT5;
-          P1OUT |= BIT0; //If P1.0 is connected to Vcc (early design)
+          //P1OUT |= BIT0; //If P1.0 is connected to Vcc (early design)
           //P1.2 Timer A1 output (TA1.1)
           P1SEL0 |= BIT2;
           P1SEL1 &= ~BIT2;
@@ -524,7 +521,7 @@ __interrupt void DMA_ISR(void)
       //DMACTL4 = DMARMWDIS; // Read-modify-write disable. Probably not needed
 
       /* Ch 0 Single transfer, increment destination address only, enable DMA interrupt to
-       signal that all conversions are complete and let DMA ISR escape from LPM0 */
+       signal that all conversions are complete and let DMA ISR escape from LPM */
       DMA0CTL = DMADT_0 + DMADSTINCR_3 + DMAIE;
       DMA0SZ = ADC_SAMPLES;
       DMA0SAL = &ADC12MEM0; //Ignore the 515-D warnings
@@ -579,18 +576,20 @@ uint32_t CheckMic(void)
         for(k=0; k<ADC_SAMPLES; k++) ADC_array[k] = 0; //Clear the ADC sampling array
         fft_sum = 0; //Clear integrated spectrum
         BIAS_ON
+        TA1CTL |= MC__UP; //Enable timer TA1 for ADC12
         REFCTL0 |= REFVSEL_1 + REFON; // Enable internal 2.0V reference; settling time 40 us
-        TB0CCR0=IWAIT;  //Delay by IWAIT in LPM0 to miss 3V turn-on transient
-        LPM0;
+        TB0CCR0=IWAIT;  //Delay by IWAIT in LPM to miss 3V turn-on transient
+        LPM3;
         // P3OUT &= ~BIT3; //Toggles after each conversion; Un-comment for testing
         //Delay timeout. Get analog signal for specified number of ADC_SAMPLES
         ADC12IFGR0 = 0; //Should be clear but clear anyway
         DMA0CTL |= DMAEN; //Enable DMA for repeated single transfers
         ADC12CTL0 |= ADC12ENC; //Turn on the ADC
-        LPM0; //Wait in LPM0
+        LPM3;
         while (DMA0CTL & DMAEN); //Interrupt occurred. Check DMA transfer is complete before disabling ADC
         ADC12CTL0 &= ~ADC12ENC; //Disable ADC
         REFCTL0 &= ~REFON; // Disable internal 2.0V reference
+        TA1CTL &= ~MC__UP;
         BIAS_OFF
         // Perform real FFT with fixed scaling on ADC data
         sat_count=0;
@@ -636,7 +635,7 @@ void ArrayUpdate(uint8_t state) //Cases defined by the global enum
         {
             blink(2);
             TB0CCR0 = BLINK + BLINK + BLINK;
-            LPM0;
+            LPM3;
             blink(2);
         }
         break;
@@ -654,7 +653,7 @@ void ArrayUpdate(uint8_t state) //Cases defined by the global enum
         {
             blink(1);
             TB0CCR0 = BLINK + BLINK + BLINK;
-            LPM0;
+            LPM3;
             blink(1);
         }
         break;
@@ -683,7 +682,7 @@ void SetParam(uint8_t p1, uint8_t p2)
             else ; //Bad argument, ignore
             break;
         case 0x70:  //Low power mode
-            if(p2 == 0x30) Status_array[10] = 0x00; //Sleep in LPM0
+            if(p2 == 0x30) Status_array[10] = 0x00; //Sleep
             else if(p2 == 0x31) Status_array[10] = 0x01; //Sensor active
             else break; //Bad argument, ignore
             break;
@@ -746,8 +745,8 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
             {
                // TA1CTL &= ~MC__UP; //Halt timer TA1. Use for testing with Energy Trace
                 TB0CCR0 = Rate(bgpoll); //Polling period
-                LPM0;      //Wait in low power mode for timeout or status query from master
-                //LPM3; Use for testing
+                //LPM0;      //Wait in low power mode for timeout or status query from master
+                LPM3; //Use for testing
                // TA1CTL |= MC__UP; //Re-enable timer TA1 for ADC12. Use for testing
                 //Timeout interrupt exits from LPM0. Get the microphone signal.
                 noise_array[m] = CheckMic();
@@ -777,7 +776,7 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
             {
                 blink(2);
                 TB0CCR0 = BLINK + BLINK + BLINK;
-                LPM0;
+                LPM3;
                 blink(2);
             }
             else //Quiet environment. Background baseline parameters found (bavg, bdev)
@@ -827,7 +826,7 @@ void ReadCommands(void) //Valid command string received from master
           #ifndef SLEEP
             Status_array[10]=0x01;
           #else
-            Status_array[10]=0x00; //Put sensor into LPM0
+            Status_array[10]=0x00; //Put sensor into sleep mode
          #endif
         }
         else ; //Garbage input, ignore
@@ -842,7 +841,7 @@ void ReadCommands(void) //Valid command string received from master
         }
         poll_nv = Status_array[8];
         led = Status_array[9];
-        if (Status_array[10] == 0x00) //ASCII command P0 puts slave into LPM0
+        if (Status_array[10] == 0x00) //ASCII command P0 puts slave to sleep
         {
             Sleep();
         }
@@ -855,7 +854,7 @@ void blink(uint8_t led_select) //Green (P2.0): 1; Red (P2.1): 2
         else if (led_select==1) P2OUT |= BIT0;
         else ;
         TB0CCR0=BLINK;
-        LPM0;
+        LPM3;
         P2OUT &= ~BIT0;
         P2OUT &= ~BIT1;
     }
@@ -863,12 +862,12 @@ void blink(uint8_t led_select) //Green (P2.0): 1; Red (P2.1): 2
 void Sleep(void)
 {
     /* Idle here until the ASCII sequence P1 is received from master on I2C.
-       This is a polled wakeup from LPM0 because CPU is needed to check for data transfer. */
+       This is a polled wakeup from LPM* because CPU is needed to check for data transfer. */
     RxCount=0; //Should already be clear
-    while(1) //This loop lets master poll status bytes in LPM0
+    while(1) //This loop lets master poll status bytes in LPM
     {
         TB0CCR0=1024; //Wakeup every 1 second to check for sleep escape command (P1) from master
-        LPM0;
+        LPM3;
         if(RxCount==2)
         {
             if(RxData[0]==0x70 && RxData[1]==0x31) //This is the 2-byte wakeup sequence
