@@ -206,6 +206,11 @@ void main(void) {
            Start training session by acquiring and analyzing the background level */
         if(flag.background == 1)
         {
+         //A green-red LED sequence signals start of background acquisition
+            blink(1);
+            TB0CCR0 = BLINK;
+            LPM3;
+            blink(2);
             MeasureNoise();
             sens_nv = bavg + bdev;
             flag.background = 0; //Clear the flag
