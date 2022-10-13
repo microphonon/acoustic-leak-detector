@@ -33,7 +33,6 @@
      P5.0--5.7 NC
      P7.0--7.4 NC
      P8.0 NC
-
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
      Firmware version 47. Licensed under Creative Commons. MicroPhonon October 2022  */
@@ -498,8 +497,7 @@ __interrupt void DMA_ISR(void)
           //Set pins for 32.768 kHz crystal to source LFXT
           PJSEL0 = BIT4 | BIT5;
           PJSEL1 &= ~(BIT4 + BIT5);
-          PJOUT = 0;
-          PJDIR = 0xFFFF;
+          PJDIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT6 + BIT7;
     }
 
  void SetClock(void) //Use 32768 Hz external crystal
