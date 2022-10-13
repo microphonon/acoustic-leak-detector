@@ -479,8 +479,8 @@ __interrupt void DMA_ISR(void)
           //Set pins for 32.768 kHz crystal to source LFXT
           PJSEL0 = BIT4 | BIT5;
           PJSEL1 &= ~(BIT4 + BIT5);
-          PJOUT = 0;
-          PJDIR = 0xFFFF;
+          //PJOUT = 0;
+          PJDIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT6 + BIT7;
     }
 
  void SetClock(void) //Use 32768 Hz external crystal
