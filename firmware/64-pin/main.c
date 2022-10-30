@@ -756,10 +756,10 @@ uint16_t Rate(uint8_t rindx) //Timer is 1.024 kHz
 
 void MeasureNoise(void) //Measure the background acoustic level
     {
-        volatile uint8_t m;
+        volatile uint8_t m, sat_count;
         const uint8_t bgpoll = 1; //1 second
         uint32_t bsum, dsum, *BSigs;
-        uint16_t bvar, sat_count;
+        uint16_t bvar;
         int32_t sdiff;
         //Reset the alert pins
         ALARM_CLEAR
@@ -784,7 +784,7 @@ void MeasureNoise(void) //Measure the background acoustic level
                     if (m == 255) m = 0;
                     sat_count++;
                 }
-                if (sat_count > 10) //Check if stuck in saturation
+                if (sat_count > 11) //Check if stuck in saturation
                 {
                     sat_count = 0; //Reset count
                 #ifndef TEST  //Alert with three blinks of red LED. Disable be defining TEST above
