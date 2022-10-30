@@ -35,7 +35,7 @@
      P8.0 NC
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 47. Licensed under Creative Commons. MicroPhonon October 2022  */
+     Firmware version 48. Licensed under Creative Commons. MicroPhonon October 2022  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -61,7 +61,9 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 47
+//Un-comment next line for Energy Trace testing with Launchpad. This will disable red LED blinking in MeasureNoise()
+//#define TEST
+# define FIRMWARE 48
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -757,7 +759,7 @@ void MeasureNoise(void) //Measure the background acoustic level
         volatile uint8_t m;
         const uint8_t bgpoll = 1; //1 second
         uint32_t bsum, dsum, *BSigs;
-        uint16_t bvar;
+        uint16_t bvar, sat_count;
         int32_t sdiff;
         //Reset the alert pins
         ALARM_CLEAR
@@ -766,17 +768,37 @@ void MeasureNoise(void) //Measure the background acoustic level
         while(1) //Loop until background is sufficiently quiet
         {
             for(m=0; m < bsamples; m++) noise_array[m]=0; //Clear noise array
+            sat_count = 0;
             for(m=0; m < bsamples; m++) //Acquisition time = bsamples*Rate(bgpoll)
             {
                // TA1CTL &= ~MC__UP; //Halt timer TA1. Use for testing with Energy Trace
                 TB0CCR0 = Rate(bgpoll); //Polling period
-                //LPM0;      //Wait in low power mode for timeout or status query from master
-                LPM3; //Use for testing
+                LPM3;
                // TA1CTL |= MC__UP; //Re-enable timer TA1 for ADC12. Use for testing
-                //Timeout interrupt exits from LPM0. Get the microphone signal.
+                //Timeout interrupt exits from LPM3. Get the microphone signal.
                 noise_array[m] = CheckMic();
                 //Check for ADC saturation. Discard and repeat if needed
-                if (noise_array[m] == 0) m--;
+                if (noise_array[m] == 0)
+                {
+                    m--;
+                    if (m == 255) m = 0;
+                    sat_count++;
+                }
+                if (sat_count > 10) //Check if stuck in saturation
+                {
+                    sat_count = 0; //Reset count
+                #ifndef TEST  //Alert with three blinks of red LED. Disable be defining TEST above
+                    {
+                        blink(2);
+                        TB0CCR0 = BLINK + BLINK + BLINK + BLINK + BLINK;
+                        LPM3;
+                        blink(2);
+                        TB0CCR0 = BLINK + BLINK + BLINK + BLINK + BLINK;
+                        LPM3;
+                        blink(2);
+                    }
+                #endif
+                }
             }
             bsum = 0; //Clear the signal array sum
             BSigs = noise_array; //Point to first array element
