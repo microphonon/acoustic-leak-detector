@@ -761,9 +761,11 @@ void MeasureNoise(void) //Measure the background acoustic level
         uint32_t bsum, dsum, *BSigs;
         uint16_t bvar;
         int32_t sdiff;
-        //Reset the alert pins
+        //Reset the alert pins and clear status bytes
         ALARM_CLEAR
         NOISE_CLEAR
+        Status_array[0] = 0x00;
+        Status_array[1] = 0x00;
         for(m=0; m < bsamples; m++) noise_array[m]=0;
         while(1) //Loop until background is sufficiently quiet
         {
