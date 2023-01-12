@@ -11,3 +11,5 @@ and adding the following line:
 
  ${PROJECT_ROOT}/dsplib/include
  
+The 48-pin version was used for the prototypes and is archived here. For the production run in late 2022, only the 64-pin MSP430FR59941 MCU was available; ongoing firmware development and updates are being done for this hardware. As of December 2022, the 64-pin sensor is being sold by Crowd Supply and Mouser. The firmware version can be read from the status array (see user manual).
+ 
