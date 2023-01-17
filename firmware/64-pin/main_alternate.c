@@ -52,7 +52,6 @@ void SetDMA(void);
 void ReadCommands(void);
 void ArrayUpdate(uint8_t state);
 void Sleep(void);
-int16_t CompSens(uint8_t ind);
 void MeasureNoise(void);
 uint32_t CheckMic(void);
 uint16_t Rate(uint8_t rindx);
