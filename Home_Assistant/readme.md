@@ -12,4 +12,4 @@ Another option that could allow extended battery operation is to place the D1 mi
 
 ## D1-mini firmware
 
-C++ code to control operation of the D1 mini is in the header file aquaping.h. It uses common Arduino abstractions. It is important to understand that there are two independent, asynchronous polling loops in operation: 1) The rate at which information is downloaded to and uploaded from Home Assistant over WiFi is set by the 'update_interval' period 
+C++ code to control operation of the D1 mini is in the header file aquaping.h. It uses the common Arduino abstractions. It is important to understand that there are two independent, asynchronous polling loops in operation: 1) Information is downloaded to and uploaded from Home Assistant over WiFi with a period set by the 'update_interval' (ms); 2) The AquaPing spends most of the time in a sleep state, but periodically wakes up to sample the acoustic environment. This interval is set by choosing one of 9 periods of duration in the range 1--30 secondss; see the user manual.
