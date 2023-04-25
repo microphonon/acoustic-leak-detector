@@ -16,4 +16,8 @@ Another option that could allow extended battery operation is to place the D1 mi
 
 C++ code to control operation of the D1 mini is in the header file *aquaping.h*. It uses the common Arduino abstractions. It is important to understand that this demo implements two independent, asynchronous polling loops: 1) Sensor information is downloaded to and uploaded from Home Assistant over WiFi with a period set by the 'update_interval' (ms); default is 10000 ms, i.e. 10 seconds. 2) The AquaPing spends most of the time in a sleep state, but periodically wakes up to sample the acoustic environment. This interval is set by choosing one of 9 fixed periods of duration in the range 1--30 seconds; see the user manual.
 
-In this demo, the interrupts are displayed on the alert card. Interrupts are immediate. The dashboard card with the streaming data counts is updated only on each WiFi polling cycle, which introduces some latency. Similarly, adjustments to the AquaPing control panel are transmitted to the sensor at the same rate.
+## Dashbaord
+
+The Home Assistant dashboard is highly configurable. In this demo, three dashboard cards are used. Interrupts are immediate and displayed on the alert card. The dashboard card with the streaming data counts is updated only on each WiFi polling cycle, which introduces some latency. Similarly, adjustments to the AquaPing control panel are transmitted to the sensor at the same rate.
+
+The horizontal bar graphs are optional, quite tricky to setup, and require installation of the bar-card and config-template-card modules. The latter is needed to re-scale the graph maxima when the user changes the event_set_size. It is declared as a dashboard global variable using config_template_card_vars. See the included dashboard file for the syntax. There may be alternative techniques that could work better to render these bars.
