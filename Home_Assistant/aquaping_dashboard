@@ -1,0 +1,64 @@
+title: Home
+views:
+  - path: default_view
+    title: Home
+    badges: []
+    config_template_card_vars:
+      - states['number.esphome_web_959f0c_event_array_size'].state
+    cards:
+      - type: entities
+        entities:
+          - entity: binary_sensor.esphome_web_959f0c_aquaping_leak_alert
+            name: Leak Alarm
+          - entity: binary_sensor.esphome_web_959f0c_aquaping_noise_alert
+            name: Noise Alert
+        title: AquaPing Alerts
+        state_color: true
+      - type: custom:config-template-card
+        entities:
+          - sensor.esphome_web_959f0c_quiet_count_display
+          - sensor.esphome_web_959f0c_leak_count_display
+          - sensor.esphome_web_959f0c_noise_count_display
+        card:
+          type: custom:bar-card
+          title: AquaPing Streaming Data
+          entities:
+            - entity: sensor.esphome_web_959f0c_quiet_count_display
+              icon: mdi:volume-low
+              name: Quiet count
+              max: ${states['number.esphome_web_959f0c_event_array_size'].state}
+              positions:
+                name: outside
+              color: Lime
+            - entity: sensor.esphome_web_959f0c_leak_count_display
+              icon: mdi:water-alert
+              name: Leak count
+              max: ${states['number.esphome_web_959f0c_event_array_size'].state}
+              positions:
+                name: outside
+              color: Red
+            - entity: sensor.esphome_web_959f0c_noise_count_display
+              icon: mdi:volume-plus
+              name: Noise count
+              max: ${states['number.esphome_web_959f0c_event_array_size'].state}
+              positions:
+                name: outside
+              color: '#eed202'
+      - type: entities
+        entities:
+          - entity: number.esphome_web_959f0c_event_array_size
+            name: Set event set size
+          - entity: number.esphome_web_959f0c_alarm_trigger_size
+            name: Set alarm trigger count
+          - entity: number.esphome_web_959f0c_background_array_size
+            name: Set training set size
+          - entity: sensor.esphome_web_959f0c_polling_period_display
+            name: Polling period (seconds)
+          - entity: number.esphome_web_959f0c_polling_period
+            name: Set polling index
+          - entity: switch.esphome_web_959f0c_led_switch
+            name: AquaPing LEDs
+            secondary_info: none
+        title: AquaPing Control Panel
+        state_color: true
+
