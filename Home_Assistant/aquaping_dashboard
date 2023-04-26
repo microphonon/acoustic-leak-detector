@@ -3,8 +3,6 @@ views:
   - path: default_view
     title: Home
     badges: []
-    config_template_card_vars:
-      - states['number.esphome_web_959f0c_event_array_size'].state
     cards:
       - type: entities
         entities:
