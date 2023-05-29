@@ -24,9 +24,9 @@ Another option that could allow extended battery operation is to place the D1-mi
 
 C++ code to control operation of the D1-mini is in the header file *aquaping.h*. It uses the common Arduino abstractions and must be declared as an include in the yaml file. It is important to understand that this demo implements two independent, asynchronous polling loops running on the D1-mini and AquaPing:
 
-1) Sensor information is downloaded to and uploaded from Home Assistant over WiFi with a period set by the 'update_interval' (ms) in the D1-mini firmware; default is 10000 ms, i.e. 10 seconds. 
+1) **Polling the sensor.** Sensor information is downloaded to and uploaded from Home Assistant over WiFi with a period set by the 'update_interval' (ms) in the D1-mini firmware; default is 10000 ms, i.e. 10 seconds. 
 
-2) The AquaPing spends most of the time in a sleep state, but periodically wakes up to sample the acoustic environment. This interval is set by selecting one of 9 fixed periods with duration in the range 1--30 seconds; see the user manual. 
+2) **Periodic analysis of the environmental acoustics.** The AquaPing spends most of the time in a sleep state, but periodically wakes up to sample the acoustic environment. This interval is set by selecting one of 9 fixed periods with duration in the range 1--30 seconds; see the user manual. 
 
 There are many examples of sensors uploading data via I2C and displaying it on the Home Assistant dashboard. Going in the other direction, however, is not well documented. This capability is needed to send configuration parameters to the AquaPing.  In this demo, frontend data is passed through the ESPHome yaml to the firmware where it is sent as byte pairs using the *Wire* library. 
 
