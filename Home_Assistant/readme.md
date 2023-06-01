@@ -30,6 +30,9 @@ C++ code to control operation of the D1-mini is in the header file *aquaping.h*.
 
 There are many examples of sensors uploading data via I2C and displaying it on the Home Assistant dashboard. Going in the other direction, however, is not well documented. This capability is needed to send configuration parameters to the AquaPing.  In this demo, frontend data is passed through the ESPHome yaml to the firmware where it is sent as byte pairs using the *Wire* library. 
 
+### Troubleshooting
+When firmware is already loaded on the D1-mini, ESPHome may not be able to overwrite it. If the reset button is ineffective, try the following procedure: On the D1-mini, connect pin D3 to ground, pin D4 to 3.3V, and pin D8 to ground. Then try flashing the new firmware from ESPHome.
+
 ## Dashboard
 
 The Home Assistant dashboard is highly configurable. Three dashboard cards are used here for alerts, streaming data, and control. Interrupts for potential leaks and anomalous noise are immediate and displayed on the alert card. The dashboard card with the data counts is updated only on each WiFi polling cycle, which introduces some latency. Similarly, adjustments to the AquaPing control panel are transmitted to the sensor at the same rate and latency. 
