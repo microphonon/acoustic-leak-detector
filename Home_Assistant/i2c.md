@@ -1,6 +1,6 @@
 # Custom I²C Component on ESPHome
 
-The wiki at ESPHome provides limited information on how to communicate with a slave device (eg. a sensor) from the dashboard using I²C. The [Custom Sensor Component](https://esphome.io/components/sensor/custom.html) documentation describes how to setup and register a custom sensor. A custom component class is defined using Arduino-style code that is tagged as an include in the yaml file. Consult the above link for details and example code.
+The wiki at ESPHome provides very little information on how to communicate with a custom slave device (eg. a newly developed sensor) from the dashboard using I²C. An approach for doing this is described here. The [Custom Sensor Component](https://esphome.io/components/sensor/custom.html) documentation describes how to setup and register a custom sensor. A custom component class is defined in a header file using Arduino-style code that is tagged as an include in the yaml file. Consult the above link for details and some example code.
 
 ## Dashboard Interfacing: I²C Write
 
@@ -17,10 +17,9 @@ It may be useful to write to a slave register via I²C using a numerical input f
         step: 1
         mode: box
         id: input_1
-        icon: "mdi:counter"
 ```
         
-We want to write this number to a ``REGISTER_ADDRESS`` on the slave device via I²C. This can be accomplished with a timed polling loop:
+We want to write this number to a ``REGISTER_ADDRESS`` on the slave device using a timed polling loop:
  
 ```
     #include "esphome.h"
@@ -54,7 +53,7 @@ We want to write this number to a ``REGISTER_ADDRESS`` on the slave device via I
     };
 ```
 
-The numerical value from the dashboard is accessed with its ``id`` tag and its state is set to the byte variable that we call ``register_value``.  To prevent an I²C write on every iteration, the contents of the register are stored in ``temp`` and checked for a change. 
+The ESP device (master) checks the dashboard with a period defined by ``POLLING_PERIOD``; in this example every 15 seconds. The numerical value from the dashboard is accessed with its ``id`` tag and its state is set to the byte variable that we call ``register_value``.  To prevent an I²C write on every iteration, the contents of the register are stored in ``temp`` and checked for any change. 
 
 ## Dashboard Interfacing: I²C Read
 
