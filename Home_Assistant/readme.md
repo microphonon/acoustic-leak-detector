@@ -28,7 +28,7 @@ C++ code to control operation of the D1-mini is in the header file *aquaping.h*.
 
 2) **Periodic analysis of the environmental acoustics.** The AquaPing spends most of the time in a sleep state, but periodically wakes up to sample the acoustic environment. This interval is set by selecting one of 9 fixed periods with duration in the range 1--30 seconds; see the user manual. 
 
-There are many examples of sensors uploading data via I2C and displaying it on the Home Assistant dashboard. Going in the other direction, however, is not well documented. This capability is needed to send configuration parameters to the AquaPing.  In this demo, frontend data is passed through the ESPHome yaml to the firmware where it is sent as byte pairs using the *Wire* library. 
+There are many examples of sensors uploading data via I2C and displaying it on the Home Assistant dashboard. Going in the other direction, however, is not well documented. This capability is needed to send configuration parameters to the AquaPing.  In this demo, frontend data is passed through the ESPHome yaml to the firmware where it is sent as byte pairs using the *Wire* library. The methodology used for I2C read/write operations is illustrated in [this document](i2c.md).
 
 ### Troubleshooting
 When firmware is already loaded on the D1-mini, ESPHome may not be able to overwrite it. If the reset button is ineffective, try the following procedure: On the D1-mini, connect pin D3 to ground, pin D4 to 3.3V, and pin D8 to ground. Then try flashing the new firmware from ESPHome.
@@ -40,3 +40,5 @@ The Home Assistant dashboard is highly configurable. Three dashboard cards are u
 The alarm_trigger_count must be set to less than or equal to the event_set_size. If set higher, it will be coerced to the event_set_size. The control panel selects the polling period with an integer index (1--9) and the corresponding time is displayed in seconds. If the training_set_size is changed, a new training session will be automatically initiated. All configuration parameters are explained in the user guide. A switch is provided to enable/disable the AquaPing LEDs.
 
 The horizontal bar graphs are optional, quite tricky to setup, and require installation of the [bar-card](https://github.com/custom-cards/bar-card) and [config-template-card](https://github.com/iantrich/config-template-card) modules. The latter is needed to re-scale the graph maxima when the user changes the event_set_size. See the included dashboard file for the syntax. There may be alternative techniques that could work better to render these graphics. Real-time counts can also be displayed using simpler numeric indicators. These can be added to the dashboard by editing the ESPHome yaml file.
+
+
