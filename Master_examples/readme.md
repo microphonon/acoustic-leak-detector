@@ -28,6 +28,6 @@ It is important to understand that the rate at which
 
 The D1 mini can supply 3V3 external power to the sensor.
     Make sure a large electrolytic filter capacitor is on this line.
-    Don't forget the pullup resistors on SDA and SCL; tested with 4.7k.
+    The module already has pullup resistors for SDA and SCL.
   
 
