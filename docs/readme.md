@@ -7,5 +7,5 @@ In this repository:
 - One-page engineering brochure (.pdf)
 - Detecting simulated leaks inside a drywall structure (.pdf)
 
-An academic paper describing the engineering design of the acoustic leak sensor is available for free download at the IEEE [Tech Archive](https://doi.org/10.36227/techrxiv.23849154.v1).
+An academic paper describing the engineering design of the acoustic leak sensor is available for free download at [arXiv.org](https://arxiv.org/abs/2511.00348).
 
