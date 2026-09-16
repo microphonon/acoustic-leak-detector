@@ -1,1 +1,2 @@
-Alternate firmware version 49 uses more efficient ring buffers for the 3 counting arrays. This will save CPU cycles but may not noticeably improve battery life. 
+Firmware version 50: Syntiant acquired the Knowles product line of SiSonic MEMS microphones. In their new data sheet, Syntiant recommends a 40 ms delay after the application of bias voltage to allow the microphone to attain full sensitivity. The Aquaping uses pulse bias on every acoustic acquisition to maximize battery life. To incorporate this new specification, the firmware has been revised to increase IWAIT from 5 ms to 40 ms. The interval between rapid multiple acquisitions (NWAIT) has been decreased to compensate.
+
