@@ -35,7 +35,7 @@
      P8.0 NC
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 48. Licensed under Creative Commons. MicroPhonon October 2022  */
+     Firmware version 50. Licensed under Creative Commons. MicroPhonon September 2026  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -62,7 +62,7 @@ void blink(uint8_t led_select);
 //#define SLEEP
 //Un-comment next line for Energy Trace testing with Launchpad. This will disable red LED blinking in MeasureNoise()
 //#define TEST
-# define FIRMWARE 48
+# define FIRMWARE 50
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -70,8 +70,8 @@ void blink(uint8_t led_select);
 # define DATASET 20 //Default value for arraysize
 # define TRIGGER 18 //Default value for alarmsize
 //The following delays assume Timer B is 1.024 kHz (DCO/32)
-# define IWAIT 5 // Time to wait before enabling ADC
-# define NWAIT 45 //Time interval between multiple acquisitions
+# define IWAIT 40 // Time to wait before enabling ADC
+# define NWAIT 10 //Time interval between multiple acquisitions
 # define SAMPLING_PERIOD 239 //Counts for 8 MHz SMCLK; 240 gives 33.333 kHz
 # define SAMPLE_TIME 200 //Set at 200 for ~5 us
 # define ADC_SAMPLES 256
@@ -103,17 +103,20 @@ struct  //Use a bit-field for binary flags
     uint8_t saturation:1;
 } flag;
 
-struct //These are the 3 counting arrays
-{
-    uint8_t trigger;
-    uint8_t ok;
-    uint8_t noise;
-} counts[256];
+struct rings //These are the 3 counting arrays
+   {
+       uint8_t trigger;
+       uint8_t ok;
+       uint8_t noise;
+   } counts[256];
+
+struct rings *pc; //Pointer for the counting arrays
 
 uint32_t noise_array[256]; //Reserve array space for the background acquisition function
 uint16_t sens_nv, bavg, bdev; //Global variables for ambient background
 uint8_t Status_array[SBYTES], RxData[COMMAND_BYTES + COMMAND_BYTES], RxBuffer;
 volatile uint8_t RxCount, *PRxData; //For master command data
+volatile uint8_t ringcount; //For counting arrays
 uint16_t ADC_array[ADC_SAMPLES], *ADC;
 // Analog input signal and FFT result
 DSPLIB_DATA(input,MSP_ALIGN_FFT_Q15(ADC_SAMPLES))
@@ -153,16 +156,16 @@ void main(void) {
      when read from persistent storage. */
       Status_array[0] = 0x00; //Alarm status; 0x00 is OK
       Status_array[1] = 0x00; //Noise warning
-      Status_array[2] = 0x00; //Below threshold events
-      Status_array[3] = 0x00; //Above threshold events
-      Status_array[4] = 0x00; //Noise events
+      Status_array[2] = 0x00; //Count of below-threshold events
+      Status_array[3] = 0x00; //Count of above-threshold events
+      Status_array[4] = 0x00; //Count of noise events
       Status_array[5] = bsamples;
       Status_array[6] = arraysize;
       Status_array[7] = alarmsize;
       Status_array[8] = poll_nv; //Loop period selection byte
       // Status_array[8] = 0x01; //Always set loop period to 1 sec on startup
       Status_array[9] = led;
-      Status_array[10] = 0x01; //Sensor is active
+      Status_array[10] = 0x01; //Sensor is active with 0x01
       Status_array[11] = FIRMWARE; //Firmware version
 
     //Initialize the three event counter arrays; will be working with array subset defined by arraysize
@@ -172,6 +175,8 @@ void main(void) {
         counts[i].ok=0;
         counts[i].noise=0;
     }
+    pc = counts; //Set pointer at first array location
+    ringcount = 0;
     for (i=0; i < MICSAMPLES; i++)
     {
         sig_array[i]=0; //For averaging ADC acquisitions
@@ -250,6 +255,7 @@ void main(void) {
                  if (flag.saturation == 1) //Record as environmental noise
                  {
                      ArrayUpdate(NOISE);
+                     flag.saturation = 0;
                  }
                  else //No ADC saturation occurred so analyze the microphone data set
                  {
@@ -291,18 +297,19 @@ void main(void) {
                      }
                  }
              }
-         /* Add new data to event count arrays. Arrays continuously updated; oldest data removed
-            and newest data appended. Shift array indexes by 1. Remove oldest data first. */
-              for (i=0; i < arraysize-1; i++)
+         // Substitute new data into event count arrays that are setup as ring buffers
+              if (ringcount == arraysize) //Check if end of ring buffer reached
                   {
-                      counts[i].trigger=counts[i+1].trigger;
-                      counts[i].ok=counts[i+1].ok;
-                      counts[i].noise=counts[i+1].noise;
+                      pc = counts; //Reset the struct pointer
+                      ringcount = 0;
                   }
-              //New data appended
-              counts[arraysize-1].trigger = flag.leak;
-              counts[arraysize-1].ok = flag.quiet;
-              counts[arraysize-1].noise = flag.noise;
+              //Substitution occurs at current pointer location
+              pc->trigger = flag.leak;
+              pc->ok = flag.quiet;
+              pc->noise = flag.noise;
+              pc++; //Increment pointer
+              ringcount++;
+
               //Sum the arrays with new data; the three counts will be placed in Status_array
               sum_ok = 0;
               sum_trigger = 0;
@@ -332,6 +339,8 @@ void main(void) {
                                   counts[i].ok=0;
                                   counts[i].noise=0;
                               }
+                              pc = counts;
+                              ringcount = 0;
                           }
                           else Status_array[0] = 0x00; //No alarm
                   }
@@ -349,6 +358,8 @@ void main(void) {
                               ok_count[i]=0;
                               noise_count[i]=0;
                           }
+                          pc = counts;
+                          ringcount = 0;
                       }
                   }
             #endif
@@ -385,14 +396,14 @@ void main(void) {
     } //End of main polling loop
 }
 
-    #pragma vector=TIMER0_B0_VECTOR
-     __interrupt void Timer_B (void)
-     {
-         LPM3_EXIT;
-     }
+#pragma vector = TIMER0_B0_VECTOR
+__interrupt void Timer_B (void)
+{
+    LPM3_EXIT;
+}
 
-    #pragma vector = EUSCI_B0_VECTOR
-    __interrupt void USCI_B0_ISR(void)
+#pragma vector = EUSCI_B0_VECTOR
+__interrupt void USCI_B0_ISR (void)
      {
         switch(__even_in_range(UCB0IV, USCI_I2C_UCBIT9IFG))
          {
@@ -496,8 +507,8 @@ __interrupt void DMA_ISR(void)
           /* P8.0 NC */
           P8DIR |= BIT0;
           //Set pins for 32.768 kHz crystal to source LFXT
-          PJSEL0 = BIT4 | BIT5;
-          PJSEL1 &= ~(BIT4 + BIT5);
+          PJSEL0 = BIT4 | BIT5; //Probably don't need to set BIT5; see Table 9-36 on data sheet
+          PJSEL1 &= ~(BIT4 + BIT5); //Clear just in case
           PJDIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT6 + BIT7;
     }
 
@@ -601,6 +612,7 @@ uint32_t CheckMic(void)
         BIAS_ON
         TA1CTL |= MC__UP; //Enable timer TA1 for ADC12
         REFCTL0 |= REFVSEL_1 + REFON; // Enable internal 2.0V reference; settling time 40 us
+        //Delay by IWAIT in LPM to allow microphone bias to settle and miss 3V turn-on transient
         TB0CCR0=IWAIT;  //Delay by IWAIT in LPM to miss 3V turn-on transient
         LPM3;
         // P3OUT &= ~BIT3; //Toggles after each conversion; Un-comment for testing
@@ -857,6 +869,8 @@ void ReadCommands(void) //Valid command string received from master
             counts[i].ok=0;
             counts[i].noise=0;
         }
+        pc = counts; //Reset pointer
+        ringcount = 0;
         /* Show the three sums clear in status, but do not need to explicitly clear them.
             The cleared event arrays will sum to zero. */
             Status_array[2] = 0; //Clear the below threshold count (sum_ok)
@@ -929,4 +943,5 @@ void Sleep(void)
         else RxCount=0;
     }
 }
+
 
