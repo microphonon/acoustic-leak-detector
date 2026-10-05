@@ -9,7 +9,7 @@
    Enable DSP by by placing the following line:
    ${PROJECT_ROOT}/dsplib/include
    in CCS Build: MSP430 Compiler: Include Options
-   Must have the TI dsplib folder is in project directory
+   Must have the TI dsplib folder in project directory
 
      P1.0 NC
      P1.1 NC
@@ -28,14 +28,14 @@
      P3.1 NC
      P3.2 NC
      P3.3 Option to toggle this pin after each ADC12 conversion (TP3)
-     P3.4 Leak alarm
+     P3.4 Leak alarm pin
      P3.5--3.7 NC
 
      P4.0--4.7 NC
 
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 46. Licensed under Creative Commons. MicroPhonon August 2022  */
+     Firmware version 52. Licensed under Creative Commons. MicroPhonon October 2026  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -60,7 +60,7 @@ void blink(uint8_t led_select);
 
 //Un-comment the following line if sensor should go into sleep mode when alarm detected
 //#define SLEEP
-# define FIRMWARE 46
+# define FIRMWARE 52
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
@@ -68,8 +68,8 @@ void blink(uint8_t led_select);
 # define DATASET 20 //Default value for arraysize
 # define TRIGGER 18 //Default value for alarmsize
 //The following delays assume Timer B is 1.024 kHz (DCO/32)
-# define IWAIT 5 // Time to wait before enabling ADC
-# define NWAIT 45 //Time interval between multiple acquisitions
+# define IWAIT 40 // Time to wait before enabling ADC
+# define NWAIT 10 //Time interval between multiple acquisitions
 # define SAMPLING_PERIOD 239 //Counts for 8 MHz SMCLK; 240 gives 33.333 kHz
 # define SAMPLE_TIME 200 //Set at 200 for ~5 us
 # define ADC_SAMPLES 256
@@ -134,32 +134,25 @@ void main(void) {
 
     volatile uint8_t i, j;
     uint8_t sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
-    uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
+    uint32_t sum4, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
     int32_t diff;
+    int64_t sum5;
 
-    SetPins();
-    SetI2C();
-    SetClock();
-    SetTimer();
-    SetADC();
-    SetDMA();
-    PMMCTL0_H |= PMMPW_H; //Unlock Vref registers for ADC use
-     __enable_interrupt(); //Enable global interrupts.
      /* Status_array elements 5--9 are different from these default values
      when read from persistent storage. */
-      Status_array[0] = 0x00; //Alarm status; 0x00 is OK
-      Status_array[1] = 0x00; //Noise warning
-      Status_array[2] = 0x00; //Below threshold events
-      Status_array[3] = 0x00; //Above threshold events
-      Status_array[4] = 0x00; //Noise events
-      Status_array[5] = bsamples;
-      Status_array[6] = arraysize;
-      Status_array[7] = alarmsize;
-      Status_array[8] = poll_nv; //Loop period selection byte
-      // Status_array[8] = 0x01; //Always set loop period to 1 sec on startup
-      Status_array[9] = led;
-      Status_array[10] = 0x01; //Sensor is active
-      Status_array[11] = FIRMWARE; //Firmware version
+     Status_array[0] = 0x00; //Alarm status; 0x00 is OK
+     Status_array[1] = 0x00; //Noise warning
+     Status_array[2] = 0x00; //Below threshold events
+     Status_array[3] = 0x00; //Above threshold events
+     Status_array[4] = 0x00; //Noise events
+     Status_array[5] = bsamples;
+     Status_array[6] = arraysize;
+     Status_array[7] = alarmsize;
+     Status_array[8] = poll_nv; //Loop period selection byte
+     // Status_array[8] = 0x01; //Always set loop period to 1 sec on startup
+     Status_array[9] = led;
+     Status_array[10] = 0x01; //Sensor is active
+     Status_array[11] = FIRMWARE; //Firmware version
 
     //Initialize the three event counter arrays; will be working with array subset defined by arraysize
     for (i=0; i < arraysize; i++)
@@ -178,6 +171,16 @@ void main(void) {
     }
     RxCount = 0;
     flag.background = 1; //Set to acquire the background
+
+    SetPins();
+    SetDMA();
+    SetI2C();
+    SetClock();
+    SetTimer();
+    SetADC();
+    PMMCTL0_H |= PMMPW_H; //Unlock Vref registers for ADC use
+     __enable_interrupt(); //Enable global interrupts.
+
     /* The following clear-reset sequences must be used to enable Channels 1 and 2
        of the DMA, which are used for I2C data transfer. */
     DMA1CTL &= ~DMAEN;
@@ -205,7 +208,9 @@ void main(void) {
            Start training session by acquiring and analyzing the background level */
         if(flag.background == 1)
         {
-         //A green-red LED sequence signals start of background acquisition
+         /* A green-red LED sequence signals start of background acquisition.
+            Will remain in MeasureNoise() indefinitely until a stable acoustic
+            environment exists. */
             blink(1);
             TB0CCR0 = BLINK;
             LPM3;
@@ -214,6 +219,7 @@ void main(void) {
             sens_nv = bavg + bdev;
             flag.background = 0; //Clear the flag
         }
+        //Monitor mode starts here
          for (i=0; i < MICSAMPLES; i++) sig_array[i]=0; //Clear just in case
          TB0CCR0 = Rate(poll_nv); //Polling period for main loop with timer TB0
          LPM3;      //Wait in LPM3 for timeout or status query from master
@@ -364,7 +370,7 @@ void main(void) {
              {
                  if (Status_array[0] == 0x01) //Set output alert pin and go to sleep
                  {
-                     Status_array[11]=0x00; //Sleep status byte set
+                     Status_array[10]=0x00; //Sleep status byte set
                      ALARM_ON //Set alarm pin
                      Sleep();
                  }
@@ -424,7 +430,7 @@ __interrupt void DMA_ISR(void)
             PRxData = RxData; //Place pointer at start of received data array
         }
         *PRxData++ = RxBuffer;
-        RxCount++; //Number of (paired) command bytes
+        RxCount++; //Number of command bytes. These are sent as pairs so the byte count must be an even number
         DMA2CTL |= DMAEN;
         break;
     case 8: break;  // DMA3IFG = DMA Channel 3
@@ -438,7 +444,6 @@ __interrupt void DMA_ISR(void)
 
   void SetPins(void)
     {
-          PM5CTL0 &= ~LOCKLPM5; //Unlock GPIO
 /*          P1.0 NC
             P1.1 NC
             P1.2 Timer A1 output (TA1.1) TP2
@@ -469,10 +474,10 @@ __interrupt void DMA_ISR(void)
             P3.1 NC
             P3.2 NC
             P3.3 Option to toggle this pin after each ADC12 conversion (TP3)
-            P3.4 Leak alarm
+            P3.4 Leak alarm pin. Toggles high on leak; can monitor with controller
             P3.5--3.7 NC */
           P3DIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT4 + BIT5 + BIT6 + BIT7;
-          P3OUT &= ~BIT4;
+          ALARM_CLEAR
           /* P4.0--4.7 NC */
           P4DIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT4 + BIT5 + BIT6 + BIT7;
           //Set pins for 32.768 kHz crystal to source LFXT
@@ -480,6 +485,7 @@ __interrupt void DMA_ISR(void)
           PJSEL1 &= ~(BIT4 + BIT5);
           //PJOUT = 0;
           PJDIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT6 + BIT7;
+          PM5CTL0 &= ~LOCKLPM5; //Unlock GPIO
     }
 
  void SetClock(void) //Use 32768 Hz external crystal
@@ -517,6 +523,11 @@ __interrupt void DMA_ISR(void)
             UCB0IE = UCSTPIE;                       //Enable stop interrupt
         }
 
+ /* The DMA performs 3 operations on 3 separately configured channels.
+  * Channel 0: Transfer data from the ADC
+  * Channel 1: Transfer information bytes from the sensor (slave) to the controller (master) via I2C
+  * Channel 2: Transfer command byte pairs from the controller (master) to the sensor (slave) via I2C
+  * A separate function sets up the DMA interrupts    */
  void SetDMA(void) //Configure DMA Channels 0,1,2
  {
      // Set the DMA triggers. See Table 9-11 on 5994 data sheet
@@ -570,6 +581,7 @@ uint32_t CheckMic(void)
         const uint16_t fft_start = FFT_LOW + FFT_LOW; //2x needed to account for real & complex component at each frequency
         const uint16_t fft_count = fft_start + FFT_HIGH - FFT_LOW + 1; //Frequency elements in FFT sub-array
         int16_t fft_array[ADC_SAMPLES],a,b,*pfft;
+        int32_t c;
         // Initialize the fft parameter structure.
         msp_status status;
         msp_fft_q15_params fftParams;
@@ -617,7 +629,8 @@ uint32_t CheckMic(void)
         {
             a = *pfft++; //real component
             b = *pfft++; //imaginary component
-            fft_sum += sqrt(a*a + b*b);
+            c = a*a + b*b;
+            fft_sum += sqrt(c);
         }
         return fft_sum;
 }
@@ -738,9 +751,12 @@ void MeasureNoise(void) //Measure the background acoustic level at startup
     {
         volatile uint8_t m;
         const uint8_t bgpoll = 1; //1 second
-        uint32_t bsum, dsum, *BSigs;
-        uint16_t bvar;
+        uint32_t bsum, bvar, *BSigs;
         int32_t sdiff;
+        int64_t dsum;
+        ALARM_CLEAR
+        Status_array[0] = 0x00;
+        Status_array[1] = 0x00;
         for(m=0; m < bsamples; m++) noise_array[m]=0;
         while(1) //Loop until background is sufficiently quiet
         {
