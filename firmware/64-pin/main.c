@@ -6,10 +6,10 @@
    ACLK = 32768 Hz sourced by Timer_B0
    SMCLK sources Timer_A1 for ADC12
 
-   Enable DSP by by placing the following line:
+   Enable DSP by by adding the following line:
    ${PROJECT_ROOT}/dsplib/include
    in CCS Build: MSP430 Compiler: Include Options
-   Must have the TI dsplib folder is in project directory
+   Must have the TI dsplib folder in the project directory
 
      P1.0 NC
      P1.1 NC
@@ -35,7 +35,7 @@
      P8.0 NC
      PJ.4 and PJ.5 connect to external 32.768 kHz crystal for LFXT
 
-     Firmware version 50. Licensed under Creative Commons. MicroPhonon September 2026  */
+     Firmware version 51. Licensed under Creative Commons. MicroPhonon October 2026  */
 
 #include <msp430.h>
 #include <stdint.h>
@@ -62,11 +62,11 @@ void blink(uint8_t led_select);
 //#define SLEEP
 //Un-comment next line for Energy Trace testing with Launchpad. This will disable red LED blinking in MeasureNoise()
 //#define TEST
-# define FIRMWARE 50
+# define FIRMWARE 51
 # define SLAVE_ADDRESS 0x77
 # define MICSAMPLES 5  //Number of times microphone is polled for impulse noise rejection
 # define SBYTES 12 //Number of status bytes
-# define COMMAND_BYTES 8 //Number control commands
+# define COMMAND_BYTES 8 //Number of control commands
 # define DATASET 20 //Default value for arraysize
 # define TRIGGER 18 //Default value for alarmsize
 //The following delays assume Timer B is 1.024 kHz (DCO/32)
@@ -80,7 +80,7 @@ void blink(uint8_t led_select);
 //Use frequency step 130.2 Hz for ADC_SAMPLES = 256 at 33.333 kHz
 # define FFT_LOW 54 //130*54 = 7000 Hz
 # define FFT_HIGH 88 //130*88 = 11.5 kHz
-# define MEAN_MULT 2 //Multiplies the standard deviation to check for environmental noise
+# define MEAN_MULT 2 //Multiplier for the standard deviation; used to check for environmental noise
 //Next 2 parameters help set background noise level
 # define BACKGROUND_SAMPLES 30 //Default value 30 seconds; can be changed by user in range 10--255
 # define NOISE_MULT 2 //Larger NOISE_MULT allows more fluctuation in ambient background
@@ -122,7 +122,7 @@ uint16_t ADC_array[ADC_SAMPLES], *ADC;
 DSPLIB_DATA(input,MSP_ALIGN_FFT_Q15(ADC_SAMPLES))
 _q15 input[ADC_SAMPLES];
 
-/* Initial firmware settings. Any adjustment to these 5 settings by master
+/* Initial firmware settings. Any adjustment to these 5 settings by controller
 will persist on power off. These variables must be placed outside main program. */
 #pragma PERSISTENT(arraysize)
 uint8_t arraysize = DATASET;
@@ -141,18 +141,11 @@ void main(void) {
 
     volatile uint8_t i, j;
     uint8_t sum_ok, sum_trigger, sum_noise, Size_check[COMMAND_BYTES];
-    uint32_t sum4, sum5, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
+    uint32_t sum4, var5, sdev, avg_sum4, sig_array[MICSAMPLES], *PSigs;
     int32_t diff;
+    int64_t sum5;
 
-    SetPins();
-    SetI2C();
-    SetClock();
-    SetTimer();
-    SetADC();
-    SetDMA();
-    PMMCTL0_H |= PMMPW_H; //Unlock Vref registers for ADC use
-     __enable_interrupt(); //Enable global interrupts.
-     /* Status_array elements 5--9 are different from these default values
+     /* Status_array elements 5--9 will be different from these default values
      when read from persistent storage. */
       Status_array[0] = 0x00; //Alarm status; 0x00 is OK
       Status_array[1] = 0x00; //Noise warning
@@ -187,6 +180,15 @@ void main(void) {
     }
     RxCount = 0;
     flag.background = 1; //Set to acquire the background
+
+    SetPins();
+    SetDMA();
+    SetI2C();
+    SetClock();
+    SetTimer();
+    SetADC();
+    PMMCTL0_H |= PMMPW_H; //Unlock Vref registers for ADC use
+    __enable_interrupt(); //Enable global interrupts.
     /* The following clear-reset sequences must be used to enable Channels 1 and 2
        of the DMA, which are used for I2C data transfer. */
     DMA1CTL &= ~DMAEN;
@@ -197,8 +199,8 @@ void main(void) {
 
     while(1)  //Top of main loop
     {
-    /*  Check if new data received from master. Receive data asynchronous with slave loop,
-        but slave parameters only updated at start (here). Must be 2,4,6...or 2*COMMAND_BYTES or else ignored.
+    /*  Check if new data received from master on I2C. Receive data asynchronous with slave loop,
+        but slave parameters only updated at start (here). Byte count must be 2,4,6...or 2*COMMAND_BYTES or else ignored.
         Update Status_array with any new bytes. Slave will send Status_array any time requested. */
         if(RxCount != 0)
         {
@@ -206,7 +208,7 @@ void main(void) {
             {
                 if (RxCount == Size_check[i]) //Master can send commands in any order
                 {
-                      ReadCommands(); //Correct byte count found; read master command bytes
+                      ReadCommands(); //Correct byte count found; read controller command bytes
                 }
             }
         }
@@ -214,15 +216,20 @@ void main(void) {
            Start training session by acquiring and analyzing the background level */
         if(flag.background == 1)
         {
-         //A green-red LED sequence signals start of background acquisition
+         /* A green-red LED sequence signals start of background acquisition.
+            Will remain in MeasureNoise() indefinitely until a stable acoustic
+            environment exists.
+          */
             blink(1);
             TB0CCR0 = BLINK;
             LPM3;
             blink(2);
             MeasureNoise();
+            //Stable background found
             sens_nv = bavg + bdev;
             flag.background = 0; //Clear the flag
         }
+         //Monitor mode starts here
          for (i=0; i < MICSAMPLES; i++) sig_array[i]=0; //Clear just in case
          TB0CCR0 = Rate(poll_nv); //Polling period for main loop with timer TB0
          LPM3;      //Wait in LPM3 for timeout or status query from master
@@ -238,7 +245,7 @@ void main(void) {
          }
          else
          /* Heard something exceeding sensitivity threshold but below ADC saturation.
-            Do rapid succession of microphone measurements. */
+            Do rapid succession of microphone measurements to check for a sustained signal. */
              {
                  flag.saturation = 0;
                  for (i=1; i < MICSAMPLES; i++)
@@ -267,7 +274,7 @@ void main(void) {
                          if (*PSigs > sens_nv) ++j;
                          sum4 += *PSigs++;
                      }
-                     if (j == MICSAMPLES) //We have sustained signal. Check if this is from environmental noise
+                     if (j == MICSAMPLES) //We have sustained signal. Check if this is from erratic environmental noise
                      {
                          avg_sum4 = sum4/MICSAMPLES; //Average the integrated FFT signals
                          //Calculate standard deviation
@@ -387,7 +394,7 @@ void main(void) {
              {
                  if (Status_array[0] == 0x01) //Set output alert pin and go to sleep
                  {
-                     Status_array[11]=0x00; //Sleep status byte set
+                     Status_array[10]=0x00; //Sleep status byte set
                      ALARM_ON //Set alarm pin
                      Sleep();
                  }
@@ -447,7 +454,7 @@ __interrupt void DMA_ISR(void)
             PRxData = RxData; //Place pointer at start of received data array
         }
         *PRxData++ = RxBuffer;
-        RxCount++; //Number of (paired) command bytes
+        RxCount++; //Number of command bytes. These are sent as pairs so the byte count must be an even number
         DMA2CTL |= DMAEN;
         break;
     case 8: break;  // DMA3IFG = DMA Channel 3
@@ -461,7 +468,6 @@ __interrupt void DMA_ISR(void)
 
   void SetPins(void)
     {
-          PM5CTL0 &= ~LOCKLPM5; //Unlock GPIO
 /*          P1.0 NC
             P1.1 NC
             P1.2 Timer A1 output (TA1.1) TP2
@@ -510,6 +516,7 @@ __interrupt void DMA_ISR(void)
           PJSEL0 = BIT4 | BIT5; //Probably don't need to set BIT5; see Table 9-36 on data sheet
           PJSEL1 &= ~(BIT4 + BIT5); //Clear just in case
           PJDIR |= BIT0 + BIT1 + BIT2 + BIT3 + BIT6 + BIT7;
+          PM5CTL0 &= ~LOCKLPM5; //Unlock GPIO
     }
 
  void SetClock(void) //Use 32768 Hz external crystal
@@ -547,9 +554,15 @@ __interrupt void DMA_ISR(void)
             UCB0IE = UCSTPIE;                       //Enable stop interrupt
         }
 
- void SetDMA(void) //Configure DMA Channels 0,1,2
+ /* The DMA performs 3 operations on 3 separately configured channels.
+  * Channel 0: Transfer data from the ADC
+  * Channel 1: Transfer information bytes from the sensor (slave) to the controller (master) via I2C
+  * Channel 2: Transfer command byte pairs from the controller (master) to the sensor (slave) via I2C
+  * A separate function sets up the DMA interrupts
+  */
+ void SetDMA(void)
  {
-     // Set the DMA triggers. See Table 9-11 on 5994 data sheet
+     // Set the DMA triggers. See Table 9-11 on MSP430FR5994 data sheet
       DMACTL0 = DMA0TSEL_26 + DMA1TSEL_19; //Ch 0 is ADC12 end of conversion; Ch 1 is UCB0TXIFG0
       DMACTL1 = DMA2TSEL_18; //Ch 2 is UCB0RXIFG0
       //DMACTL4 = DMARMWDIS; // Read-modify-write disable. Probably not needed
@@ -600,6 +613,7 @@ uint32_t CheckMic(void)
         const uint16_t fft_start = FFT_LOW + FFT_LOW; //2x needed to account for real & complex component at each frequency
         const uint16_t fft_count = fft_start + FFT_HIGH - FFT_LOW + 1; //Frequency elements in FFT sub-array
         int16_t fft_array[ADC_SAMPLES],a,b,*pfft;
+        int32_t c;
         // Initialize the fft parameter structure.
         msp_status status;
         msp_fft_q15_params fftParams;
@@ -648,7 +662,8 @@ uint32_t CheckMic(void)
         {
             a = *pfft++; //real component
             b = *pfft++; //imaginary component
-            fft_sum += sqrt(a*a + b*b);
+            c = a*a + b*b;
+            fft_sum += sqrt(c);
         }
         return fft_sum;
 }
@@ -769,9 +784,9 @@ void MeasureNoise(void) //Measure the background acoustic level
     {
         volatile uint8_t m, sat_count;
         const uint8_t bgpoll = 1; //1 second
-        uint32_t bsum, dsum, *BSigs;
-        uint16_t bvar;
+        uint32_t bsum, bvar, *BSigs;
         int32_t sdiff;
+        int64_t dsum;
         //Reset the alert pins and clear status bytes
         ALARM_CLEAR
         NOISE_CLEAR
@@ -943,5 +958,4 @@ void Sleep(void)
         else RxCount=0;
     }
 }
-
 
