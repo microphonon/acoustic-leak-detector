@@ -29,7 +29,7 @@ The AquaPing firmware remains unchanged. The GUI requires python and the pyseria
 permission and can be run on the CLI as a batch file by entering `./aquaping_gui.py` or `python3 aquaping_gui.py`. 
 The Linux user must also be a member of the dialout group. 
 
-The free Arduino IDE is used to flash the .ino firmware onto the device via USB serial. The Raspberry Pi Pico uses 
+The free Arduino IDE is used to flash the .ino firmware onto the master device via USB serial. The Raspberry Pi Pico uses 
 the Earle Philhower Raspberry Pi Pico/RP2040 board package. It can be installed by following these instructions:
 
 [https://learn.adafruit.com/using-raspberry-pi-pico-pico-2-with-arduino/rp2040-arduino-ide-setup](https://learn.adafruit.com/using-raspberry-pi-pico-pico-2-with-arduino/rp2040-arduino-ide-setup)
