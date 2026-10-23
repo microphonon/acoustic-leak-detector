@@ -1,5 +1,7 @@
 # Graphical User Interface for the Arduino and Raspberry Pi
 
+![Graphical User Interface for the AquaPing](https://github.com/microphonon/acoustic-leak-detector/blob/main/GUIs/GUI.jpg)
+
 This software package provides a graphical user interface for two-way communication between the AquaPing acoustic leak sensor and a personal 
 computer. The AquaPing sends and receives data bytes using the serial I2C protocol, so intermediary hardware is required when using a 
 laptop or desktop computer. Widely available and inexpensive Arduino and Raspberry Pi microcontroller boards  can perform the function 
