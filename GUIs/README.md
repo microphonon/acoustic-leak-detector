@@ -2,30 +2,30 @@
 
 ![Graphical User Interface for the AquaPing](https://github.com/microphonon/acoustic-leak-detector/blob/main/GUIs/GUI.jpg)
 
-This software package provides a graphical user interface for two-way communication between the AquaPing acoustic leak sensor and a personal 
-computer. The AquaPing sends and receives data bytes using the serial I2C protocol, so intermediary hardware is required when using a 
+This software package renders a graphical user interface for two-way communication between the AquaPing acoustic leak sensor and a personal 
+computer. The AquaPing sends and receives data bytes as a slave on the serial I2C protocol, so intermediary hardware is required when using a 
 laptop or desktop computer. Widely available and inexpensive Arduino and Raspberry Pi microcontroller boards  can perform the function 
-of I2C master.  The master also routes sensor/slave data to and from a PC. Because of their emphasis on low-power IOT applications using 
+of I2C master.  The master also routes sensor data to and from a PC. Because of the emphasis on low-power IOT applications using 
 a 3V3 power bus, the code has been developed for two specific hardware types:
 
-- Arduino Nano 33 IOT. Load the arduino_gui.ino firmware
+- Arduino Nano 33 IOT is loaded with the arduino_gui.ino firmware
 
-- Raspberry Pi Pico. Load the raspi_gui.ino firmware
+- Raspberry Pi Pico is loaded with the raspi_gui.ino firmware
 
 Minor modifications are needed to implement wireless Bluetooth or WiFi as well as other Arduino and Raspberry Pi variants. Appropriate 
 edits can be determined by a competent LLM. 
 
-Two customizable software files are needed: i) aquaping_gui.py is a python/tkinter application that runs on a PC 
+Two customizable software files are provided: i) aquaping_gui.py is a python/tkinter application that runs on a PC 
 and ii) one of the hardware-specific .ino files listed above that is coded in C. Sensor data is read and displayed on the GUI; the monitoring 
 parameters can also be configured.
 
 The software is open-source and should work with any operating system. Refer to the user manual for detailed description 
 and interpretation of the sensor data stream and configuration of the control parameters. A text-only CLI for serial 
-terminal communication is also available.
+terminal communication is [also available](https://github.com/microphonon/acoustic-leak-detector/tree/main/Terminal_programs).
 
 ## Installation 
 
-The GUI requires python and the pyserial package installed on the PC. On Linux, the program must be given executable 
+The AquaPing firmware remains unchanged. The GUI requires python and the pyserial package installed on the PC. On Linux, the program must be given executable 
 permission and can be run on the CLI as a batch file by entering `./aquaping_gui.py` or `python3 aquaping_gui.py`. 
 The Linux user must also be a member of the dialout group. 
 
@@ -82,4 +82,4 @@ leak or noisy environment is detected. The alert conditions are thoroughly descr
 
 The Control Panel allows the user to configure the AquaPing. When the GUI is launched, default values for the different parameters are shown. The size of the Monitor data set and number of counts to reach Threshold can be changed by entering new values. Nine different Polling Periods are available in the range 1–30 seconds. Modify these values as desired and press the **Set** button. This resets all data counts. A checkbox toggles LED operation on the AquaPing PCB; an adjacent checkbox puts the sensor in a sleep state where all monitoring stops and power consumption is minimized. The **Reset Training** button forces the sensor to reacquire a background at a 1 Hz rate with the specified number of samples. Pressing **Sensor Reset** restores all parameters to their default values and initiates a new training session.
 
-This is experimental software. Unexpected behavior can sometimes be fixed by momentarily unplugging the USB cable and re-connecting.
+This is experimental software. Please report any bugs. Unexpected behavior can sometimes be fixed by momentarily unplugging the USB cable and re-connecting.
