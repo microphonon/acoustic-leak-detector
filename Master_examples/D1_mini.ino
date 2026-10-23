@@ -19,7 +19,7 @@
 
     The D1 mini can supply 3V3 external power to the sensor.
     Make sure a large electrolytic filter capacitor is on this line.
-    Don't forget the pullup resistors on SDA and SCL; tested with 4.7k.
+    The D1-mini provides pullup resistors on SDA and SCL.
   
     MPH MicroPhonon April 2022 */
 
