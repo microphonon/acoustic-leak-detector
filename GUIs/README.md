@@ -22,6 +22,8 @@ parameters can also be configured.
 The software is open-source and should work with any operating system. Refer to the user manual for detailed description of sensor operation, interpretation of the data stream, and configuration of the control parameters. A text-only CLI for serial 
 terminal communication is [also available](https://github.com/microphonon/acoustic-leak-detector/tree/main/Terminal_programs).
 
+The tkinter/python code for the GUI has been ported to work with the Excamera [i2cdriver](https://i2cdriver.com/) that can be found in a separate directory.
+
 ## Installation 
 
 The AquaPing firmware remains unchanged. The GUI requires python and the pyserial package installed on the PC. On Linux, the program must be given executable 
