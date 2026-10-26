@@ -52,7 +52,9 @@ A USB Micro-B cable connects the PC to the I2C master hardware at a baud rate of
 ports on the AquaPing. On the Nano 33 IOT, the SDA and SDL pins are A4 and A5, respectively. The RP Pico uses GP4 and GP5, respectively. 
 Pullup resistors are already present on the Nano 33 IOT, but the RP Pico does not have this feature.  External pullup resistor values 
 of 4.7k (not critical) are a good choice for a clock speed of 100 kHz; the pullup voltage is also 3V3. Use of a higher pullup voltage 
-will likely damage the AquaPing.
+will likely damage the AquaPing. A conceptual wiring layout is shown below:
+
+![Connection layout](https://github.com/microphonon/acoustic-leak-detector/blob/main/GUIs/layout.jpg)
 
 Immediate alerts (i.e. without waiting a full polling period to perform an I2C read) are possible by wiring the ALARM and/or NOISE pins 
 on the AquaPing to interrupt ports as configured on the master. This can be useful when the master is set for very long delay between 
