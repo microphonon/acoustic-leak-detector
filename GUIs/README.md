@@ -19,8 +19,7 @@ Two customizable software files are provided: i) aquaping_gui.py is a python/tki
 and ii) one of the hardware-specific .ino files listed above that is coded in C. Sensor data is read and displayed on the GUI; the monitoring 
 parameters can also be configured.
 
-The software is open-source and should work with any operating system. Refer to the user manual for detailed description 
-and interpretation of the sensor data stream and configuration of the control parameters. A text-only CLI for serial 
+The software is open-source and should work with any operating system. Refer to the user manual for detailed description of sensor operation, interpretation of the data stream, and configuration of the control parameters. A text-only CLI for serial 
 terminal communication is [also available](https://github.com/microphonon/acoustic-leak-detector/tree/main/Terminal_programs).
 
 ## Installation 
@@ -40,12 +39,12 @@ The two files arduino_gui.ino and raspi_gui.ino differ primarily by the pin assi
 
 The AquaPing is designed to run from a _quiet_ DC power source in the range 1.8–3.3V. Suitable supply voltage can be 
 obtained directly from the Arduino Nano 33 IOT and Raspberry Pi Pico; consult the board schematic for the designated +3V3 and GND pins. 
-The default power-save-mode of the RP Pico, however, produces excessive ripple on the 3V3 line that will send the front-end amplifier 
+The default power-save-mode of the RP Pico, however, produces excessive ripple on the 3V3 line that will push the front-end amplifier 
 stages of the AquaPing into oscillation. The raspi_gui.ino firmware switches it into a quieter PWM mode. In both cases, placing a 
 large electrolytic decoupling capacitor across the 3V3 power bus is mandatory. The AquaPing will be damaged if it is exposed to 5 Vdc 
 and higher. If only 5V is available, an inexpensive voltage regulator or step-down converter must be used.
 
-<ins>Caution</ins>: The Nano 33 IOT is known to generate noise transients on the power bus when configured for wireless operation, i.e. during 
+<ins>Caution</ins>: The Nano 33 IOT is known to generate noise transients on the power bus when it is configured for wireless operation, i.e. during 
 the brief intervals when the radio is transmitting. Extra steps may be needed to prevent disruption of AquaPing operation.
 
 A USB Micro-B cable connects the PC to the I2C master hardware at a baud rate of 9600. Jumper wires  link the master to corresponding I2C 
