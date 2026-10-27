@@ -22,7 +22,7 @@ parameters can also be configured.
 The software is open-source and should work with any operating system. Refer to the user manual for detailed description of sensor operation, interpretation of the data stream, and configuration of the control parameters. A text-only CLI for serial 
 terminal communication is [also available](https://github.com/microphonon/acoustic-leak-detector/tree/main/Terminal_programs).
 
-The tkinter/python code for the GUI has been ported to work with the Excamera [i2cdriver](https://i2cdriver.com/) that can be found in a separate directory.
+The tkinter/python code for the GUI has been ported to work with the Excamera [I2CDriver](https://i2cdriver.com/). Software for that specific hardware can be found in a separate [directory](https://github.com/microphonon/acoustic-leak-detector/tree/main/GUIs/i2cdriver).
 
 ## Installation 
 
