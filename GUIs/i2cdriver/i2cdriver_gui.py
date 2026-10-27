@@ -4,6 +4,9 @@
 # Uses an I2CDriver (Excamera Labs) as the USB-to-I2C interface
 # Requires the i2cdriver package on the host PC:  pip install i2cdriver
 # When run from a terminal CLI, the I2C command bytes are displayed
+# This code differs from aquaping_gui.py in the method of serial communication
+# with the I2CDriver hardware. The I2CDriver and AquaPing firmware do not
+# have to be modified.
 # Consult the program user guide for more information
 # MicroPhonon 2026. Licensed under Creative Commons
 # ===========================================================================
@@ -17,10 +20,10 @@ from tkinter import ttk, messagebox
 import serial.tools.list_ports   # only used to list the I2CDriver's USB serial port
 from i2cdriver import I2CDriver
 
-SLAVE_ADDR = 0x77        # 7-bit I2C address of the AquaPing -- SET THIS
-I2C_SPEED_KHZ = 100      # 100 or 400
-FRAME_LEN = 12           # bytes read from the sensor per frame
-READ_PERIOD = 1.0        # seconds between sensor reads
+SLAVE_ADDR = 0x77        # 7-bit I2C address of the AquaPing
+I2C_SPEED_KHZ = 100      
+FRAME_LEN = 12           # 12 status bytes read from the AquaPing per frame
+READ_PERIOD = 1.0        # Time between I2C sensor reads
 
 LEDS_ON = bytes([0x6C, 0x31])
 LEDS_OFF = bytes([0x6C, 0x30])
