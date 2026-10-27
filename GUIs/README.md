@@ -49,7 +49,7 @@ and higher. If only 5V is available, an inexpensive voltage regulator or step-do
 <ins>Caution</ins>: The Nano 33 IOT is known to generate noise transients on the power bus when it is configured for wireless operation, i.e. during 
 the brief intervals when the radio is transmitting. Extra steps may be needed to prevent disruption of AquaPing operation.
 
-A USB Micro-B cable connects the PC to the I2C master hardware at a baud rate of 9600. Jumper wires  link the master to corresponding I2C 
+A USB Micro-B cable connects the PC to the I2C master hardware at a default baud rate of 9600. Jumper wires  link the master to corresponding I2C 
 ports on the AquaPing. On the Nano 33 IOT, the SDA and SDL pins are A4 and A5, respectively. The RP Pico uses GP4 and GP5, respectively. 
 Pullup resistors are already present on the Nano 33 IOT, but the RP Pico does not have this feature.  External pullup resistor values 
 of 4.7k (not critical) are a good choice for a clock speed of 100 kHz; the pullup voltage is also 3V3. Use of a higher pullup voltage 
@@ -69,7 +69,7 @@ On initial power up or reset, the AquaPing will enter Training Mode as described
 from it via I2C at a 1 Hz rate. The surface-mount LED located at the corner of the master board blinks to signal each transfer. The master 
 polling rate is adjusted by changing the polling_interval constant in the .ino firmware; default is 1000 (ms).
 
-It is important to understand that the master and slave (AquaPing) are polling, independently, asynchronously, and at different rates. Acoustic data transport 
+It is important to understand that the master and slave (AquaPing) are polling independently, asynchronously, and at different rates. Acoustic data transport 
 from the ADC along with I2C read/write operations are handled without CPU intervention by Direct Memory Access (DMA) on the MSP430 microcontroller. 
 The acoustic monitoring interval of the AquaPing and the polled I2C read events are entirely separate operations and user-configurable.
 
@@ -83,6 +83,6 @@ read from the AquaPing and shown in decimal format. Seven of the 12 numbers are 
 The Status panel displays short messages to indicate if the sensor is training or in monitoring mode. Alerts appear when a potential 
 leak or noisy environment is detected. The alert conditions are thoroughly described in the user manual.
 
-The Control Panel allows the user to configure the AquaPing. When the GUI is launched, default values for the different parameters are shown. The size of the Monitor data set and number of counts to reach Threshold can be changed by entering new values. Nine different Polling Periods are available in the range 1–30 seconds. Modify these values as desired and press the **Set** button. This resets all data counts. A checkbox toggles LED operation on the AquaPing PCB; an adjacent checkbox puts the sensor in a sleep state where all monitoring stops and power consumption is minimized. The **Reset Training** button forces the sensor to reacquire a background at a 1 Hz rate with the specified number of samples. Pressing **Sensor Reset** restores all parameters to their default values and initiates a new training session. The Polling Period is NOT the period of the I2c data reads, which can only be changed by directly editing the .ino file.
+The Control Panel allows the user to configure the AquaPing. When the GUI is launched, default values for the different parameters are shown. The size of the Monitor data set and number of counts to reach Threshold can be changed by entering new values. Nine different Polling Periods are available in the range 1–30 seconds. Modify these values as desired and press the **Set** button. This resets all data counts. A checkbox toggles LED operation on the AquaPing PCB; an adjacent checkbox puts the sensor in a sleep state where all monitoring stops and power consumption is minimized. The **Reset Training** button forces the sensor to reacquire a background at a 1 Hz rate with the specified number of samples. Pressing **Sensor Reset** restores all parameters to their default values and initiates a new training session. The Polling Period is _not_ the period of the I2c data reads, which can only be changed by directly editing the .ino file.
 
 This is experimental software. Please report any bugs. Unexpected behavior can sometimes be fixed by momentarily unplugging the USB cable and re-connecting.
