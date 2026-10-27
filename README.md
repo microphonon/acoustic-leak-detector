@@ -26,8 +26,8 @@ A good introduction to the MicroPhonon AquaPing is the comprehensive ![user guid
 In this repository you will find:
 
 - Design documentation, schematics, PCB layout, and firmware
-- Stand-alone graphical user interface for a PC using [Arduino](https://store-usa.arduino.cc/products/arduino-nano-33-iot), [Raspberry Pi](https://www.raspberrypi.com/products/raspberry-pi-pico/), or [I2CDriver](https://i2cdriver.com/) hardware as intermediary
-- Firmware for two-way text-based communication with the AquaPing using the terminal
+- Stand-alone graphical user interface for a PC using [Arduino](https://store-usa.arduino.cc/products/arduino-nano-33-iot), [Raspberry Pi](https://www.raspberrypi.com/products/raspberry-pi-pico/), or [I2CDriver](https://i2cdriver.com/) as intermediary hardware for I2C communication
+- Firmware for text-based communication with the AquaPing using the terminal
 - Demonstration of AquaPing integration with Home Assistant using [ESPHome](https://devices.esphome.io/devices/aquaping/)  
 
 The AquaPing hardware with pre-loaded firmware is available for purchase at [Mouser](https://www.mouser.com/ProductDetail/MicroPhonon/CS-AQUAPING-01?qs=IPgv5n7u5QZ96LnbcZcGBA%3D%3D) or  [Crowd Supply](https://www.crowdsupply.com/microphonon/aquaping).
