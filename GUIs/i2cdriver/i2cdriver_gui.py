@@ -60,7 +60,7 @@ HEXPERIODS = {
 
 class SerialApp:
     def __init__(self, root):
-        root.title("AquaPing I2C Interface")
+        root.title("AquaPing I2CDriver Interface")
         self.root = root
         self.q = queue.Queue()
         self.data = []  
@@ -102,6 +102,9 @@ class SerialApp:
 
         self.btn = tk.Button(top, text="Connect", command=self.toggle)
         self.btn.pack(side="left", padx=10,pady=3)
+        
+        self.name = tk.Label(top, text="I2CDriver Interface", fg="black", font=("Helvetica", 12))
+        self.name.pack(side="left", padx=10,pady=3)
         
         lframe1 = ttk.LabelFrame(root, text="Streaming Data", padding=3)
         lframe1.pack(padx=10, pady=3, fill="both", expand=True)
