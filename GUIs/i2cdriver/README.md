@@ -4,4 +4,4 @@ The `aquaping_gui.py` code can be modified to work with the Excamera [i2cdriver]
 
 In addition to python and pyserial, the I2CDriver package should be installed on the host PC with `pip install i2cdriver`. **No modifications to the I2CDriver or AquaPing firmware are required**. Run the file `i2cdriver_gui.py` as a batch file or launch from the command line. Commands sent from the GUI will be displayed as hexadecimal bytes on the terminal. 
 
-Additional guidance can be found in [GUI_instructions.pdf](https://github.com/microphonon/acoustic-leak-detector/blob/main/GUIs/GUI_instructions.pdf). This is beta software that was generated with the assistance of claud.ai. Please report any bugs.
+Additional guidance can be found in [GUI_instructions.pdf](https://github.com/microphonon/acoustic-leak-detector/blob/main/GUIs/GUI_instructions.pdf). This is beta software specific to the I2CDriver and will NOT work with the Arduino or Raspberry PI Pico. It was generated with the assistance of claud.ai. Please report any bugs.
