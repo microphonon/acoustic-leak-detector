@@ -37,6 +37,8 @@ the Earle Philhower Raspberry Pi Pico/RP2040 board package. It can be installed 
 
 The two files arduino_gui.ino and raspi_gui.ino differ primarily by the pin assignments.
 
+This repository also contains the file raspi_gui.py for users who prefer micropython when working with the Raspberry Pi. Setup the RP Pico with the necessary .uf2 file from [micropython.org](https://micropython.org/download/?vendor=Raspberry%20Pi). Open raspi_gui.py with an IDE like Thonny and save it as main.py to the RP Pico. Renaming will make it automatically load at boot. It should behave the same as the .ino setup and communicate seamlessly with aquaping_gui.py.
+
 ## Hardware
 
 The AquaPing is designed to run from a _quiet_ DC power source in the range 1.8–3.3V. Suitable supply voltage can be 
