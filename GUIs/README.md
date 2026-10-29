@@ -10,7 +10,7 @@ a 3V3 power bus, the code has been developed for two specific hardware types:
 
 - Arduino Nano 33 IOT is loaded with the arduino_gui.ino firmware
 
-- Raspberry Pi Pico is loaded with the raspi_gui.ino firmware (micropython is also available; see [below](https://github.com/microphonon/acoustic-leak-detector/edit/main/GUIs/README.md#installation))
+- Raspberry Pi Pico is loaded with the raspi_gui.ino firmware (micropython is also available; see below)
 
 Minor modifications are needed to implement wireless Bluetooth or WiFi as well as other Arduino and Raspberry Pi variants. Appropriate 
 edits can be determined by a competent LLM. 
