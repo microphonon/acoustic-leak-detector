@@ -37,7 +37,7 @@ the Earle Philhower Raspberry Pi Pico/RP2040 board package. It can be installed 
 
 The two files arduino_gui.ino and raspi_gui.ino differ primarily by the pin assignments.
 
-This repository also contains the file raspi_gui.py for users who prefer micropython when working with the Raspberry Pi. Setup the RP Pico with the necessary .uf2 file from [micropython.org](https://micropython.org/download/?vendor=Raspberry%20Pi). Open raspi_gui.py with an IDE like Thonny and save it as main.py to the RP Pico. Renaming will make it automatically load at boot. It should behave the same as the .ino setup and communicate seamlessly with aquaping_gui.py.
+This repository also contains the file raspi_gui.py for users who prefer micropython when working with the Raspberry Pi. Setup the RP Pico with the necessary .uf2 file from [micropython.org](https://micropython.org/download/?vendor=Raspberry%20Pi). Then open raspi_gui.py with an IDE like Thonny and save it as main.py to the RP Pico to make it automatically load at boot. It should behave the same as the .ino setup and enable communication with the sensor via aquaping_gui.py.
 
 ## Hardware
 
@@ -80,7 +80,7 @@ identified. On Linux, this may look like /dev/ttyUSB0 or dev/ttyACM0; they will 
 If automatic serial port detection fails, modify the .py code to specify the port manually.
 
 When the PC connects to the Arduino or Raspberry Pi, the Streaming Data panel is continuously updated. A time-stamped, 12-number data stream 
-read from the AquaPing and shown in decimal format. Seven of the 12 numbers are parsed and displayed individually. 
+is read from the AquaPing and shown in decimal format. Seven of the 12 numbers are parsed and displayed individually. 
 
 The Status panel displays short messages to indicate if the sensor is training or in monitoring mode. Alerts appear when a potential 
 leak or noisy environment is detected. The alert conditions are thoroughly described in the user manual.
