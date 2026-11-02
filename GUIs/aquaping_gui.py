@@ -78,8 +78,6 @@ class SerialApp:
         self.led = tk.IntVar(value=1)   #LEDs on by default
         self.sleep = tk.IntVar(value=0)   #Sleep is off by default
         self.default_period = tk.StringVar()       
-        
-        self.q = queue.Queue()
         self.ser = None
         self.running = False
 
@@ -103,61 +101,75 @@ class SerialApp:
          
         for i in range(12):
             lframe1.columnconfigure(i, weight=1)
-            
+        # This is the raw data stream 
         s0 = tk.Label(lframe1, textvariable=self.variable,  font=("Courier", 12),
          anchor="center", padx = 10, pady = 3, relief="sunken", bg="white", width = 40)
         s0.grid(sticky="w",column=0, columnspan=12, row=0, padx=(20,0), pady=10)
 
-        s1 = tk.Label(lframe1, text="Quiet Count", bg="#D6D3D1", font=("Helvetica", 14))
-        s1.grid(sticky="w",column=0, columnspan=1, row=1, padx=(20,0), pady=10)
+        # Horizontal progress bars for the three counters, scaled to Monitor Size
+                
+        s16 = tk.Label(lframe1, text="Quiet Count", bg="#D6D3D1", font=("Helvetica", 14))
+        s16.grid(sticky="w",column=0, columnspan=1, row=1, padx=(20,0), pady=10)
         
         s2 = tk.Label(lframe1, textvariable=self.data2, font=("Courier", 12),
-         anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", 
-         bg="white")
+        anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", 
+        bg="white")
         s2.grid(sticky="w",column=0, columnspan=1, row=1,padx=(130,0), pady=10)
-         
+        
+        self.bar_quiet = ttk.Progressbar(lframe1, orient="horizontal", length=400,
+                                         mode="determinate", maximum=20, value=0)
+        self.bar_quiet.grid(sticky="ews", column=0, columnspan=3, row=1, padx=(180, 10), pady=(0, 10))
+        
         s3 = tk.Label(lframe1, text="Leak Count", bg="#D6D3D1", font=("Helvetica", 14))
-        s3.grid(sticky="w",column=1, columnspan=1, row=1, padx=(0,0), pady=10)
+        s3.grid(sticky="w",column=0, columnspan=1, row=2, padx=(20,0), pady=10)
         
         s4 = tk.Label(lframe1, textvariable=self.data3, font=("Courier", 12),
          anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", 
          bg="white")
-        s4.grid(sticky="w",column=1, columnspan=1, row=1, padx=(105,0), pady=10)
-         
+        s4.grid(sticky="w",column=0, columnspan=1, row=2, padx=(130,0), pady=10)
+
+        self.bar_leak = ttk.Progressbar(lframe1, orient="horizontal", length=400,
+                                        mode="determinate", maximum=20, value=0)
+        self.bar_leak.grid(sticky="esw", column=0, columnspan=3, row=2, padx=(180, 10), pady=(0, 10))
+        
         s5 = tk.Label(lframe1, text="Noise Count", bg="#D6D3D1", font=("Helvetica", 14))
-        s5.grid(sticky="w",column=2, columnspan=1, row=1, padx=(20,0), pady=10)
+        s5.grid(sticky="w",column=0, columnspan=1, row=3, padx=(20,0), pady=10)
         
         s6 = tk.Label(lframe1, textvariable=self.data4, font=("Courier", 12),
          anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", bg="white")
-        s6.grid(sticky="w",column=2, columnspan=1, row=1, padx=(130,0), pady=10)
+        s6.grid(sticky="w",column=0, columnspan=1, row=3, padx=(130,0), pady=10)
+
+        self.bar_noise = ttk.Progressbar(lframe1, orient="horizontal", length=400,
+                                         mode="determinate", maximum=20, value=0)
+        self.bar_noise.grid(sticky="esw", column=0, columnspan=3, row=3, padx=(180, 10), pady=(0, 10))
         
         s12 = tk.Label(lframe1, text="Monitor Size", bg="#D6D3D1", font=("Helvetica", 14))
-        s12.grid(sticky="w",column=0, columnspan=1, row=2, padx=(20,0), pady=10)
+        s12.grid(sticky="w",column=0, columnspan=1, row=4, padx=(20,0), pady=10)
         
         s13 = tk.Label(lframe1, textvariable=self.events, font=("Courier", 12),
          anchor="center", width = 3, padx = 3, pady = 2, relief="sunken", bg="white")
-        s13.grid(sticky="w",column=0, columnspan=1, row=2, padx=(130,0), pady=10)
+        s13.grid(sticky="w",column=0, columnspan=1, row=4, padx=(130,0), pady=10)
         
         s14 = tk.Label(lframe1, text="Trigger Size", bg="#D6D3D1", font=("Helvetica", 14))
-        s14.grid(sticky="w",column=1, columnspan=1, row=2, padx=(0,0), pady=10) 
+        s14.grid(sticky="w",column=1, columnspan=1, row=4, padx=(0,0), pady=10) 
         
         s15 = tk.Label(lframe1, textvariable=self.trigger, font=("Courier", 12),
          anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", bg="white")
-        s15.grid(sticky="w",column=1, columnspan=1, row=2, padx=(110,0), pady=10)
+        s15.grid(sticky="w",column=1, columnspan=1, row=4, padx=(110,0), pady=10)
 
         s9 = tk.Label(lframe1, text="Training Size", bg="#D6D3D1", font=("Helvetica", 14))
-        s9.grid(sticky="w",column=2, columnspan=1, row=2, padx=(20,0), pady=10) 
+        s9.grid(sticky="w",column=2, columnspan=1, row=4, padx=(20,0), pady=10) 
         
         s10 = tk.Label(lframe1, textvariable=self.background, font=("Courier", 12),
          anchor="center", width = 3, padx = 3, pady = 3, relief="sunken", bg="white")
-        s10.grid(sticky="w",column=2, columnspan=1, row=2, padx=(135,0), pady=10)
+        s10.grid(sticky="w",column=2, columnspan=1, row=4, padx=(135,0), pady=10)
         
         s7 = tk.Label(lframe1, text="Polling Period", bg="#D6D3D1", font=("Helvetica", 14))
-        s7.grid(sticky="w",column=0, columnspan=1, row=3, padx=(20,0), pady=10)
+        s7.grid(sticky="w",column=0, columnspan=1, row=5, padx=(20,0), pady=10)
         
         s8 = tk.Label(lframe1, textvariable=self.period, font=("Courier", 12),
          anchor="center", width = 6, padx = 3, pady = 3, relief="sunken", bg="white")
-        s8.grid(sticky="w",column=0, columnspan=1, row=3, padx=(140,0), pady=10)
+        s8.grid(sticky="w",column=0, columnspan=1, row=5, padx=(145,0), pady=10)
         
          
         lframe2 = ttk.LabelFrame(root, text="Status", padding=3)
@@ -165,11 +177,11 @@ class SerialApp:
         
         self.alert1 = tk.Label(lframe2, text="Not Connected", bg="white", fg="black", 
          relief="sunken", height= 2,  width = 20, font=("Helvetica", 16, "bold"))
-        self.alert1.pack(padx=(20, 20), pady=20, side="left", fill="x")
+        self.alert1.pack(padx=(20, 0), pady=10, side="left", fill="x")
          
         self.alert2 = tk.Label(lframe2, text="Not Connected", bg="white", 
          relief="sunken", height= 2, width = 20, fg="black", font=("Helvetica", 16, "bold"))
-        self.alert2.pack(padx=(20, 20), pady=(20,20), side="left", fill="x")
+        self.alert2.pack(padx=(20, 0), pady=10, side="left", fill="x")
         
         lframe3 = ttk.LabelFrame(root, text="Control Panel", padding=3)
         lframe3.pack(padx=10, pady=3, fill="both", expand=True)
@@ -193,9 +205,9 @@ class SerialApp:
         self.c11.grid(sticky="w",column=0, columnspan=1, row=0, padx=(140,0), pady=10, ipady=3)
         self.c11.insert(0,20)
         
-        c8 = tk.Label(lframe3, text="Allowed values for Monitor Set Size: 10--255", 
+        c15 = tk.Label(lframe3, text="Allowed values for Monitor Set Size: 10--255", 
          bg="#D6D3D1", font=("Helvetica", 12))
-        c8.grid(sticky="w",column=0, columnspan=1, row=0, padx=(195,0), pady=10)
+        c15.grid(sticky="w",column=0, columnspan=1, row=0, padx=(195,0), pady=10)
         
         c10 = tk.Label(lframe3, text="Trigger Size", bg="#D6D3D1", font=("Helvetica", 14))
         c10.grid(sticky="w",column=0, columnspan=1, row=1, padx=(20,0), pady=10)
@@ -248,7 +260,7 @@ class SerialApp:
         
         c7 = tk.Button(lframe3, text="Reset Training", relief="raised", fg="white", bg="#008000", 
             width=12, font=("Helvetica", 14, "bold"), command=self.retrain)
-        c7.grid(sticky="w",column=0, columnspan=1, row=5, padx=(20,0), pady=10)
+        c7.grid(sticky="w",column=0, columnspan=1, row=5, padx=(20,0), pady=0)
 
         bcmd = (root.register(self.validate_typing), "%P")
         self.c4 = tk.Entry(
@@ -277,6 +289,7 @@ class SerialApp:
     def show_not_connected(self):
         self.alert1.config(text="Not Connected", fg="black")
         self.alert2.config(text="Not Connected", fg="black") 
+        self.clear_bars()
 
     def toggle(self):
         if self.running:
@@ -439,89 +452,95 @@ class SerialApp:
                     stamp = datetime.now().strftime("%H:%M:%S.%f")[:-5] 
                     number_read = line.split()    # Data array
                     self.q.put((stamp, line, number_read))
-
+    
+    def update_bars(self, quiet, leak, noise, monitor):
+        """Scale all three bars to the Monitor Size and set their values."""
+        try:
+            top = max(int(monitor), 1)
+            vals = (int(quiet), int(leak), int(noise))
+        except (ValueError, TypeError):
+            return
+        for bar, val in zip((self.bar_quiet, self.bar_leak, self.bar_noise), vals):
+            bar.config(maximum=top)
+            bar["value"] = min(val, top)   # clamp so a bad reading can't overflow the bar 
+            
+    def clear_bars(self):
+        for bar in (self.bar_quiet, self.bar_leak, self.bar_noise):
+            bar["value"] = 0
+            
     def poll(self):
         try:
             while True:
-                stamp, line, number_read = self.q.get_nowait()
-                self.data = number_read           # array of numbers from latest line
+                stamp, line, tok = self.q.get_nowait()
                 self.variable.set(f"[{stamp}] {line}")
-                if len(self.data) == 12:
-                    d2 = self.data2.get()
-                    d3 = self.data3.get()
-                    d4 = self.data4.get()
-                    d5 = self.data5.get()
-                    d6 = self.data6.get()
-                    d7 = self.data7.get()
-                   # print(self.pflag.get())
-                    if d2=="0" and d3=="0" and d4=="0":
-                        if self.pflag.get() == "1":
-                            text1, fg1 = "Sensor Training", "black"
-                            lflag = 0;
-                        else:
-                            text1, fg1 = "Counts Resetting", "black"
-                            lflag = 0;
-                    elif self.data0.get() == "0":
-                        text1, fg1 = "Leak Monitoring On", "#178236"
-                        lflag = 0;                    
-                    else: 
-                        text1, fg1 = "Leak Detected", "#FB2C36" 
-                        lflag = 1
-                    if lflag == 1:
-                        text2, fg2 = "Counts Resetting", "black"
-                    elif d2=="0" and d3=="0" and d4=="0":
-                        if self.pflag.get() == "1":
-                            text2, fg2 = "Sampling at 1 Hz", "black"
-                        else:
-                            text2, fg2 = "Counts Resetting", "black"
-                    elif self.data1.get() == "0":
-                        text2, fg2 = "Noise Monitoring On", "#178236"
-                    else: 
-                        text2, fg2 = "Noise Detected", "#FB2C36"
-                    if self.btn.cget("text") == "Disconnect":
-                        if self.alert1.cget("text") != text1:
-                            self.alert1.config(text=text1, fg=fg1)
-                        if self.alert2.cget("text") != text2:
-                            self.alert2.config(text=text2, fg=fg2)
-                    # Let the poll run for DELAY_CYCLES. This avoids a race condition when
-                    # setting the alert text with pflag
-                    count_index = self.counter.get()
-                    if  count_index != 0:
-                        e2 = "0"
-                        e3 = "0"
-                        e4 = "0"
-                        self.counter.set(count_index-1)
-                    else:        
-                        e2 = self.data2.get()
-                        e3 = self.data3.get()
-                        e4 = self.data4.get()
-                    if (e2!="0" or e3!="0" or e4!="0") and self.pflag.get()=="1": #Counting has started
-                        self.pflag.set("0")
-                    
-                    self.data0.set(self.data[0])
-                    self.data1.set(self.data[1])
-                    self.data2.set(self.data[2])
-                    self.data3.set(self.data[3])
-                    self.data4.set(self.data[4])
-                    self.data8.set(self.data[8])
-                    self.data5.set(self.data[5])
-                    self.data6.set(self.data[6])
-                    self.data7.set(self.data[7])
+                if len(tok) != 12:
+                    continue
+                try:
+                    vals = [int(t) for t in tok]
+                except ValueError:
+                    continue
+                if not 1 <= vals[8] <= len(Periods):
+                    continue
+                self.data = tok
 
-                    pindex = self.data8.get() 
-                    self.period.set(Periods[pindex-1])
-                    self.background.set(d5)
-                    self.events.set(d6)
-                    self.trigger.set(d7)     
-                         
+                d0, d1, d2, d3, d4 = tok[0], tok[1], tok[2], tok[3], tok[4]
+                all_zero = (d2 == "0" and d3 == "0" and d4 == "0")
+                training = self.pflag.get() == "1"
+
+                # Alert 1 (leak)
+                lflag = 0
+                if all_zero:
+                    text1, fg1 = ("Sensor Training" if training else "Counts Resetting"), "black"
+                elif d0 == "0":
+                    text1, fg1 = "Leak Monitoring On", "#178236"
+                else:
+                    text1, fg1 = "Leak Detected", "#FB2C36"
+                    lflag = 1
+
+                # Alert 2 (noise)
+                if lflag == 1:
+                    text2, fg2 = "Counts Resetting", "black"
+                elif all_zero:
+                    text2, fg2 = ("Sampling at 1 Hz" if training else "Counts Resetting"), "black"
+                elif d1 == "0":
+                    text2, fg2 = "Noise Monitoring On", "#178236"
+                else:
+                    text2, fg2 = "Noise Detected", "#FB2C36"
+
+                if self.btn.cget("text") == "Disconnect":
+                    if self.alert1.cget("text") != text1:
+                        self.alert1.config(text=text1, fg=fg1)
+                    if self.alert2.cget("text") != text2:
+                        self.alert2.config(text=text2, fg=fg2)
+
+                # Delay window after a command
+                n = self.counter.get()
+                if n != 0:
+                    self.counter.set(n - 1)
+                    e2 = e3 = e4 = "0"
+                else:
+                    e2, e3, e4 = d2, d3, d4
+
+                # Counting has started -> leave training state
+                if (e2 != "0" or e3 != "0" or e4 != "0") and training:
+                    self.pflag.set("0")
+
+                self.data0.set(d0); self.data1.set(d1)
+                self.data2.set(d2); self.data3.set(d3); self.data4.set(d4)
+                self.background.set(tok[5]); self.events.set(tok[6])
+                self.trigger.set(tok[7]); self.period.set(Periods[vals[8] - 1])
+                self.update_bars(e2, e3, e4, tok[6])
         except queue.Empty:
             pass
-        self.root.after(50, self.poll)
-
+        except Exception as e:
+            print("poll error:", e)
+        self.root.after(50, self.poll) 
+     
     def close(self):
         self.disconnect()
-        self.root.destroy()
-
+        self.root.destroy()                   
+        
+     
 if __name__ == "__main__":
     root = tk.Tk()
     SerialApp(root)
