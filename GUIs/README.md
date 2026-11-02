@@ -80,7 +80,8 @@ identified. On Linux, this may look like /dev/ttyUSB0 or dev/ttyACM0; they will 
 If automatic serial port detection fails, modify the .py code to specify the port manually.
 
 When the PC connects to the Arduino or Raspberry Pi, the Streaming Data panel is continuously updated. A time-stamped, 12-number data stream 
-is read from the AquaPing and shown in decimal format. Seven of the 12 numbers are parsed and displayed individually. 
+is read from the AquaPing and shown in decimal format. Seven of the 12 numbers are parsed and displayed individually. As a visual aid, three horizontal progress bars accompany 
+the Quiet, Leak, and Noise counts. Full-scale of each bar is the Monitor Size.
 
 The Status panel displays short messages to indicate if the sensor is training or in monitoring mode. Alerts appear when a potential 
 leak or noisy environment is detected. The alert conditions are thoroughly described in the user manual.
