@@ -289,6 +289,9 @@ class SerialApp:
     def show_not_connected(self):
         self.alert1.config(text="Not Connected", fg="black")
         self.alert2.config(text="Not Connected", fg="black") 
+        self.data2.set("")   # Quiet Count
+        self.data3.set("")   # Leak Count
+        self.data4.set("")   # Noise Count
         self.clear_bars()
 
     def toggle(self):
@@ -438,7 +441,12 @@ class SerialApp:
         self.btn.config(text="Connect")
         if self.ser and self.ser.is_open:
             self.ser.close()
-        self.show_not_connected()        
+        while not self.q.empty():
+            try:
+                self.q.get_nowait()
+            except queue.Empty:
+                break
+        self.show_not_connected()              
 
     def reader(self):
         while self.running:
