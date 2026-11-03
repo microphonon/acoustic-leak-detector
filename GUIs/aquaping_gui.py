@@ -96,6 +96,8 @@ class SerialApp:
         self.btn = tk.Button(top, text="Connect", command=self.toggle)
         self.btn.pack(side="left", padx=10,pady=3)
         
+        self.startup_check = False   # True until the first valid data line is checked
+        
         lframe1 = ttk.LabelFrame(root, text="Streaming Data", padding=3)
         lframe1.pack(padx=10, pady=3, fill="both", expand=True)
          
@@ -431,8 +433,9 @@ class SerialApp:
             messagebox.showerror("Serial error", str(e))
             self.show_not_connected()
             return
-        time.sleep(2)  # Arduino resets when the port opens
+        time.sleep(2)  # MCU resets when the port opens
         self.running = True
+        self.startup_check = True
         self.btn.config(text="Disconnect")
         threading.Thread(target=self.reader, daemon=True).start()
         
@@ -490,6 +493,11 @@ class SerialApp:
                 if not 1 <= vals[8] <= len(Periods):
                     continue
                 self.data = tok
+                # One-time startup check of LED status byte 10
+                if self.startup_check:
+                    self.startup_check = False
+                    if vals[10] == 0:
+                        self.led.set(0)   # uncheck Enable LEDs (c5)
 
                 d0, d1, d2, d3, d4 = tok[0], tok[1], tok[2], tok[3], tok[4]
                 all_zero = (d2 == "0" and d3 == "0" and d4 == "0")
