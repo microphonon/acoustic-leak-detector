@@ -8,9 +8,9 @@ laptop or desktop computer. Widely available and inexpensive Arduino and Raspber
 of I2C master.  The master also routes sensor data to and from a PC. Because of the emphasis on low-power IOT applications using 
 a 3V3 power bus, the code has been developed for two specific hardware types:
 
-- Arduino Nano 33 IOT is loaded with the arduino_gui.ino firmware
+- Arduino Nano 33 IOT. Load the arduino_gui.ino firmware
 
-- Raspberry Pi Pico is loaded with the raspi_gui.ino firmware (micropython is also available; see below)
+- Raspberry Pi Pico. Load the raspi_gui.ino firmware (micropython is also available; see below)
 
 Minor modifications are needed to implement wireless Bluetooth or WiFi as well as other Arduino and Raspberry Pi variants. Appropriate 
 edits can be determined by a competent LLM. 
